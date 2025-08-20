@@ -127,7 +127,10 @@
         // Supabase configuration
         const supabaseUrl = 'https://bcbwrymhpjcncgiwjllr.supabase.co'
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjYndyeW1ocGpjbmNnaXdqbGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDA5MDEsImV4cCI6MjA3MTE3NjkwMX0.ZiU1uF9_5h2N9choQvNihTvKWfqtPlHdvQm2iPaI2jw'
+        // REPLACE THIS with your actual service role key from Supabase Dashboard > Settings > API
+        const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjYndyeW1ocGpjbmNnaXdqbGxyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTYwMDkwMSwiZXhwIjoyMDcxMTc2OTAxfQ.ZIU48sQ6umQ0SectgdfxsrvCXFOBX2Iukni6-EWgGr4'
         const supabase = createClient(supabaseUrl, supabaseKey)
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
         const masterLoginForm = document.getElementById('masterLoginForm');
         const errorMessageDiv = document.getElementById('errorMessage');
@@ -173,10 +176,15 @@
             messageDiv.className = 'mt-4 text-center text-sm';
 
             try {
-                // Create user with Supabase Auth
-                const { data, error } = await supabase.auth.signUp({
+                // Use admin client to create user with auto-confirmation
+                const { data, error } = await supabaseAdmin.auth.admin.createUser({
                     email: email,
-                    password: password
+                    password: password,
+                    email_confirm: true,
+                    user_metadata: {
+                        created_by_admin: true,
+                        created_at: new Date().toISOString()
+                    }
                 });
 
                 if (error) throw error;
