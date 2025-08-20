@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ចុះឈ្មោះ និងចូល</title>
+    <!-- ភ្ជាប់ជាមួយ Tailwind CSS ដើម្បីរចនាទម្រង់ឱ្យស្អាត -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ភ្ជាប់ពុម្ពអក្សរខ្មែរ -->
+    <link href="https://fonts.googleapis.com/css2?family=Koulen&family=Moul&display=swap" rel="stylesheet">
+    <style>
+        /* កំណត់ពុម្ពអក្សរសម្រាប់អត្ថបទទាំងអស់ */
+        body { 
+            font-family: 'Koulen', sans-serif;
+            background-color: #111827; /* Dark background color */
+        }
+        .input-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+        }
+        input[type="text"], input[type="email"], input[type="password"] {
+            padding-left: 2.5rem;
+            background-color: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            font-family: 'Koulen', sans-serif; /* Ensure input uses the correct font */
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen px-4">
+
+    <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8 relative">
+
+        <!-- Master Account Login Section -->
+        <div id="masterLoginSection">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800">ចូលគណនី Master</h2>
+                <p class="text-gray-500 mt-2">សូមបញ្ចូលគណនី Master ដើម្បីបន្ត</p>
+            </div>
+            
+            <form id="masterLoginForm" class="space-y-6">
+                <div>
+                    <label for="username" class="block text-gray-700 text-sm mb-1">Master អ៊ីមែល</label>
+                    <div class="relative">
+                        <div class="input-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
+                        </div>
+                        <input type="text" id="username" name="username" class="shadow-sm appearance-none rounded w-full py-3 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                </div>
+                <div>
+                    <label for="master_password" class="block text-gray-700 text-sm mb-1">Master លេខសម្ងាត់</label>
+                    <div class="relative">
+                        <div class="input-icon">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
+                        </div>
+                        <input type="password" id="master_password" name="password" class="shadow-sm appearance-none rounded w-full py-3 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                </div>
+                <div>
+                    <button type="submit" class="w-full flex justify-center items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                        ចូល
+                    </button>
+                </div>
+            </form>
+            <div id="errorMessage" class="mt-4 text-center text-sm text-red-500"></div>
+        </div>
+
+        <!-- Registration Section (hidden by default) -->
+        <div id="registerSection" style="display: none;">
+             <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800">បង្កើតគណនី</h2>
+                <p class="text-gray-500 mt-2">បង្កើតគណនីសម្រាប់ប្រើប្រាស់ប្រព័ន្ធ</p>
+            </div>
+
+            <form id="registerForm" class="space-y-6">
+                <div>
+                    <label for="email" class="block text-gray-700 text-sm mb-1">អ៊ីមែល</label>
+                    <div class="relative">
+                         <div class="input-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
+                        </div>
+                        <input type="email" id="email" name="email" class="shadow-sm appearance-none rounded w-full py-3 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                </div>
+                <div>
+                    <label for="register_password" class="block text-gray-700 text-sm mb-1">ពាក្យសម្ងាត់</label>
+                     <div class="relative">
+                        <div class="input-icon">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
+                        </div>
+                        <input type="password" id="register_password" name="password" class="shadow-sm appearance-none rounded w-full py-3 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                </div>
+                <div>
+                    <button type="submit" id="submitButton" class="w-full flex justify-center items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                        ចុះឈ្មោះ
+                    </button>
+                </div>
+            </form>
+            <div id="message" class="mt-4 text-center text-sm"></div>
+        </div>
+    </div>
+    
+    <!-- Success Overlay (hidden by default) -->
+    <div id="successOverlay" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center" style="display: none; z-index: 50;">
+        <div class="bg-white p-8 rounded-lg shadow-xl text-center mx-4">
+            <h3 class="text-2xl font-bold text-green-600 mb-4">បង្កើតគណនីបានជោគជ័យ!</h3>
+            <div class="text-left space-y-2">
+                <p class="text-gray-700">គណនីថ្មី</p>
+                <p class="text-gray-900 break-all">អ៊ីមែល: <span id="successEmail" class="font-semibold text-blue-600"></span></p>
+                <p class="text-gray-900">ពាក្យសម្ងាត់: <span id="successPassword" class="font-semibold text-blue-600"></span></p>
+                <p class="text-gray-700 mt-2">ត្រូវបានបង្កើតដោយជោគជ័យ។</p>
+            </div>
+            <p class="text-sm text-red-500 mt-6">សូមថតរូបអេក្រង់នេះទុក។ អ្នកមិនអាចចុចអ្វីផ្សេងបានទៀតទេ។</p>
+        </div>
+    </div>
+
+    <!-- Supabase SDK and JavaScript -->
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
+
+        // Supabase configuration
+        const supabaseUrl = 'https://bcbwrymhpjcncgiwjllr.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjYndyeW1ocGpjbmNnaXdqbGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDA5MDEsImV4cCI6MjA3MTE3NjkwMX0.ZiU1uF9_5h2N9choQvNihTvKWfqtPlHdvQm2iPaI2jw'
+        const supabase = createClient(supabaseUrl, supabaseKey)
+
+        const masterLoginForm = document.getElementById('masterLoginForm');
+        const errorMessageDiv = document.getElementById('errorMessage');
+        const masterLoginSection = document.getElementById('masterLoginSection');
+        const registerSection = document.getElementById('registerSection');
+        const usernameInput = document.getElementById('username');
+
+        usernameInput.addEventListener('input', () => {
+            usernameInput.value = usernameInput.value.toLowerCase();
+        });
+
+        masterLoginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = usernameInput.value;
+            const password = masterLoginForm.master_password.value;
+
+            if (username === 'adminglc' && password === 'adminglc') {
+                masterLoginSection.style.display = 'none';
+                registerSection.style.display = 'block';
+            } else {
+                errorMessageDiv.textContent = 'Master អ៊ីមែល ឬ Master លេខសម្ងាត់មិនត្រឹមត្រូវទេ។';
+            }
+        });
+
+        const registerForm = document.getElementById('registerForm');
+        const messageDiv = document.getElementById('message');
+        const submitButton = document.getElementById('submitButton');
+        const emailInput = document.getElementById('email');
+
+        emailInput.addEventListener('input', () => {
+            emailInput.value = emailInput.value.toLowerCase();
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = emailInput.value;
+            const password = registerForm.register_password.value;
+            let registrationSuccessful = false;
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = 'កំពុងដំណើរការ...';
+            messageDiv.textContent = '';
+            messageDiv.className = 'mt-4 text-center text-sm';
+
+            try {
+                // Create user with Supabase Auth
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+
+                // Create user profile in users table
+                if (data.user) {
+                    const { error: profileError } = await supabase
+                        .from('users')
+                        .insert({
+                            id: data.user.id,
+                            email: data.user.email,
+                            created_at: new Date().toISOString()
+                        });
+
+                    if (profileError) {
+                        console.warn('Profile creation warning:', profileError);
+                        // Don't throw error as user creation was successful
+                    }
+                }
+                
+                registrationSuccessful = true;
+
+                const successOverlay = document.getElementById('successOverlay');
+                document.getElementById('successEmail').textContent = email;
+                document.getElementById('successPassword').textContent = password;
+                successOverlay.style.display = 'flex';
+
+            } catch (error) {
+                console.error('Registration error:', error);
+                if (error.message?.includes('already registered')) {
+                    messageDiv.textContent = 'អ៊ីមែលនេះត្រូវបានប្រើប្រាស់រួចហើយ។';
+                } else if (error.message?.includes('Password should be at least')) {
+                    messageDiv.textContent = 'ពាក្យសម្ងាត់ខ្សោយពេក។ សូមប្រើពាក្យសម្ងាត់យ៉ាងតិច 6 តួអក្សរ។';
+                } else if (error.message?.includes('Invalid email')) {
+                    messageDiv.textContent = 'ទម្រង់អ៊ីមែលមិនត្រឹមត្រូវទេ។';
+                } else {
+                    messageDiv.textContent = 'មានបញ្ហាក្នុងការចុះឈ្មោះ។ សូមព្យាយាមម្តងទៀត។';
+                }
+                messageDiv.classList.add('text-red-500');
+            } finally {
+                if (!registrationSuccessful) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg> ចុះឈ្មោះ`;
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
