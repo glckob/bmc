@@ -4,6 +4,19 @@ console.log('App.js module started loading...');
 // Import Supabase
 import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
 
+// --- UTILITY FUNCTIONS ---
+// Convert Khmer numbers to English numbers
+const convertKhmerToEnglishNumbers = (text) => {
+    if (!text) return text;
+    
+    const khmerToEnglish = {
+        '០': '0', '១': '1', '២': '2', '៣': '3', '៤': '4',
+        '៥': '5', '៦': '6', '៧': '7', '៨': '8', '៩': '9'
+    };
+    
+    return text.replace(/[០-៩]/g, (match) => khmerToEnglish[match] || match);
+};
+
 console.log('Supabase import successful');
 
 // Supabase configuration
@@ -26,6 +39,260 @@ let locations = [];
 let students = [];
 let readingLogs = [];
 let settingsData = {};
+
+// --- LOAN SORT HEADER CLICK LISTENERS ---
+const setupLoanSortListeners = () => {
+    const bind = (id, key, defaultDir = 'asc') => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('click', () => {
+            if (loanSortKey === key) {
+                // toggle direction
+                loanSortDir = loanSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                loanSortKey = key;
+                loanSortDir = defaultDir;
+            }
+            renderLoans();
+        });
+
+// Grouped Return Modal for Individual Loans
+window.openGroupedReturnModal = (groupKey) => {
+    const [borrower, loanDate] = groupKey.split('|');
+    // Find all individual loans in this group
+    const groupedLoans = loans.filter(l => 
+        (l.borrower || '').trim() === borrower && 
+        l.loan_date === loanDate && 
+        !l.class_loan_id
+    );
+    if (groupedLoans.length === 0) return;
+
+    // Populate header
+    document.getElementById('grouped-return-borrower-name').textContent = borrower;
+    document.getElementById('grouped-return-loan-date-ind').textContent = loanDate;
+
+    // Build book list with available quantities to return
+    const listEl = document.getElementById('grouped-return-books-list-ind');
+    listEl.innerHTML = '';
+    const map = new Map(); // book_id -> { title, available }
+    groupedLoans.forEach(l => {
+        if (l.status === 'ខ្ចី') {
+            const key = String(l.book_id);
+            if (!map.has(key)) map.set(key, { title: (books.find(b => String(b.id) === key)?.title) || 'សៀវភៅត្រូវបានលុប', available: 0 });
+            map.get(key).available += 1;
+        }
+    });
+    Array.from(map.entries()).forEach(([bookId, info]) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-center justify-between bg-white p-2 rounded border';
+        wrapper.innerHTML = `
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" data-book-id="${bookId}" class="mr-2">
+                <span>${info.title}</span>
+            </label>
+            <input type="number" class="w-20 border rounded px-2 py-1" data-qty-for="${bookId}" min="1" max="${info.available}" value="${info.available}">
+        `;
+        listEl.appendChild(wrapper);
+    });
+
+    document.getElementById('grouped-return-modal').classList.remove('hidden');
+};
+
+window.closeGroupedReturnModal = () => {
+    document.getElementById('grouped-return-modal').classList.add('hidden');
+};
+
+document.getElementById('grouped-return-form-ind').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentUserId) return;
+    const borrower = document.getElementById('grouped-return-borrower-name').textContent;
+    const loanDate = document.getElementById('grouped-return-loan-date-ind').textContent;
+    const checkboxes = document.querySelectorAll('#grouped-return-books-list-ind input[type="checkbox"]:checked');
+    if (checkboxes.length === 0) { alert('សូមជ្រើសរើសសៀវភៅយ៉ាងហោចណាស់មួយក្បាលដើម្បីសង។'); return; }
+
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        for (const cb of checkboxes) {
+            const bookId = cb.getAttribute('data-book-id');
+            const qtyInput = document.querySelector(`#grouped-return-books-list-ind input[data-qty-for="${bookId}"]`);
+            const qty = Math.max(1, Math.min(parseInt(qtyInput.value, 10) || 1, parseInt(qtyInput.max, 10) || 1));
+            // Find active individual loans for this group and book
+            const candidates = loans.filter(l => 
+                !l.class_loan_id && l.status === 'ខ្ចី' && 
+                (l.borrower || '').trim() === borrower && l.loan_date === loanDate && String(l.book_id) === String(bookId)
+            ).slice(0, qty);
+            for (const loan of candidates) {
+                const { error } = await supabase
+                    .from('loans')
+                    .update({ status: 'សង', return_date: today })
+                    .eq('id', loan.id)
+                    .eq('user_id', currentUserId);
+                if (error) throw error;
+            }
+        }
+        await loadLoans(currentUserId);
+        renderAll();
+        window.closeGroupedReturnModal();
+    } catch (err) {
+        console.error('Error processing grouped return (individual): ', err);
+        alert('មានបញ្ហាក្នុងការរក្សាទុកការសង។');
+    } finally {
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+    }
+});
+
+// Ensure individual grouped return handlers are bound globally
+(function ensureIndGroupedHandlers() {
+    if (window.__indGroupedHandlersBound) return;
+
+    window.openGroupedReturnModal = (groupKey) => {
+        const [borrower, loanDate] = groupKey.split('|');
+        const groupedLoans = loans.filter(l => (l.borrower || '').trim() === borrower && l.loan_date === loanDate && !l.class_loan_id);
+        if (groupedLoans.length === 0) return;
+
+        document.getElementById('grouped-return-borrower-name').textContent = borrower;
+        document.getElementById('grouped-return-loan-date-ind').textContent = loanDate;
+
+        const listEl = document.getElementById('grouped-return-books-list-ind');
+        listEl.innerHTML = '';
+        const map = new Map();
+        groupedLoans.forEach(l => {
+            if (l.status === 'ខ្ចី') {
+                const key = String(l.book_id);
+                if (!map.has(key)) map.set(key, { title: (books.find(b => String(b.id) === key)?.title) || 'សៀវភៅត្រូវបានលុប', available: 0 });
+                map.get(key).available += 1;
+            }
+        });
+        Array.from(map.entries()).forEach(([bookId, info]) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex items-center justify-between bg-white p-2 rounded border';
+            wrapper.innerHTML = `
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" data-book-id="${bookId}" class="mr-2">
+                    <span>${info.title}</span>
+                </label>
+                <input type="number" class="w-20 border rounded px-2 py-1" data-qty-for="${bookId}" min="1" max="${info.available}" value="${info.available}">
+            `;
+            listEl.appendChild(wrapper);
+
+            // Auto-fill to max when checked and keep editable; also clamp input
+            const cb = wrapper.querySelector(`input[type="checkbox"][data-book-id="${bookId}"]`);
+            const qtyInput = wrapper.querySelector(`input[data-qty-for="${bookId}"]`);
+            cb.addEventListener('change', () => {
+                if (cb.checked) {
+                    qtyInput.value = String(info.available);
+                    qtyInput.focus();
+                }
+            });
+            qtyInput.addEventListener('input', () => {
+                const max = parseInt(qtyInput.max, 10) || info.available || 1;
+                const v = parseInt(qtyInput.value, 10) || 1;
+                qtyInput.value = String(Math.max(1, Math.min(v, max)));
+            });
+        });
+
+        document.getElementById('grouped-return-modal').classList.remove('hidden');
+    };
+
+    window.closeGroupedReturnModal = () => {
+        document.getElementById('grouped-return-modal').classList.add('hidden');
+    };
+
+    const indForm = document.getElementById('grouped-return-form-ind');
+    if (indForm) {
+        indForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUserId) return;
+            const borrower = document.getElementById('grouped-return-borrower-name').textContent;
+            const loanDate = document.getElementById('grouped-return-loan-date-ind').textContent;
+            const checkboxes = document.querySelectorAll('#grouped-return-books-list-ind input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) { alert('សូមជ្រើសរើសសៀវភៅយ៉ាងហោចណាស់មួយក្បាលដើម្បីសង។'); return; }
+
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                for (const cb of checkboxes) {
+                    const bookId = cb.getAttribute('data-book-id');
+                    const qtyInput = document.querySelector(`#grouped-return-books-list-ind input[data-qty-for="${bookId}"]`);
+                    const qty = Math.max(1, Math.min(parseInt(qtyInput.value, 10) || 1, parseInt(qtyInput.max, 10) || 1));
+                    const candidates = loans.filter(l => !l.class_loan_id && l.status === 'ខ្ចី' && (l.borrower || '').trim() === borrower && l.loan_date === loanDate && String(l.book_id) === String(bookId)).slice(0, qty);
+                    for (const loan of candidates) {
+                        const { error } = await supabase
+                            .from('loans')
+                            .update({ status: 'សង', return_date: today })
+                            .eq('id', loan.id)
+                            .eq('user_id', currentUserId);
+                        if (error) throw error;
+                    }
+                }
+                await loadLoans(currentUserId);
+                renderAll();
+                window.closeGroupedReturnModal();
+            } catch (err) {
+                console.error('Error processing grouped return (individual): ', err);
+                alert('មានបញ្ហាក្នុងការរក្សាទុកការសង។');
+            } finally {
+                if (loadingOverlay) loadingOverlay.classList.add('hidden');
+            }
+        });
+    }
+
+    window.deleteGroupedLoan = async (groupKey) => {
+        if (!currentUserId) return;
+        if (!confirm('តើអ្នកពិតជាចង់លុបការខ្ចីនេះទាំងស្រុងមែនទេ?')) return;
+        const [borrower, loanDate] = groupKey.split('|');
+        try {
+            const { error } = await supabase
+                .from('loans')
+                .delete()
+                .eq('user_id', currentUserId)
+                .eq('borrower', borrower)
+                .eq('loan_date', loanDate)
+                .is('class_loan_id', null);
+            if (error) throw error;
+            await loadLoans(currentUserId);
+            renderAll();
+        } catch (e) {
+            console.error('Error deleting grouped loans: ', e);
+            alert('ការលុបបានបរាជ័យ។');
+        }
+    };
+
+    window.__indGroupedHandlersBound = true;
+})();
+
+// Delete all individual loans in a group
+window.deleteGroupedLoan = async (groupKey) => {
+    if (!currentUserId) return;
+    if (!confirm('តើអ្នកពិតជាចង់លុបការខ្ចីនេះទាំងស្រុងមែនទេ?')) return;
+    const [borrower, loanDate] = groupKey.split('|');
+    try {
+        const { error } = await supabase
+            .from('loans')
+            .delete()
+            .eq('user_id', currentUserId)
+            .eq('borrower', borrower)
+            .eq('loan_date', loanDate)
+            .is('class_loan_id', null);
+        if (error) throw error;
+        await loadLoans(currentUserId);
+        renderAll();
+    } catch (e) {
+        console.error('Error deleting grouped loans: ', e);
+        alert('ការលុបបានបរាជ័យ។');
+    }
+};
+    };
+    bind('loan-sort-serial', 'serial', 'asc');
+    bind('loan-sort-borrower', 'borrower', 'asc');
+    bind('loan-sort-title', 'title', 'asc');
+    bind('loan-sort-loan-date', 'loan_date', 'desc');
+    bind('loan-sort-return-date', 'return_date', 'desc');
+    bind('loan-sort-status', 'status', 'asc');
+};
 let currentUserId = null;
 let unsubscribeBooks = () => {};
 let unsubscribeLoans = () => {};
@@ -35,7 +302,13 @@ let unsubscribeStudents = () => {};
 let unsubscribeSettings = () => {};
 let unsubscribeReadingLogs = () => {};
 let currentScannedBooks = [];
+let currentClassLoanScannedBooks = []; // For class loan multiple books
 let currentStudentGender = ''; // For gender tracking
+let selectedLoanBooks = []; // For multiple book selection in individual loans
+// --- LOAN LIST SORT STATE ---
+let loanSortKey = 'loan_date'; // one of: 'serial','borrower','title','loan_date','return_date','status'
+let loanSortDir = 'desc'; // 'asc' | 'desc'
+let loanSortSetupDone = false; // prevent duplicate listeners
 
 const authContainer = document.getElementById('auth-container');
 const appContainer = document.getElementById('app-container');
@@ -47,6 +320,37 @@ const sidebarSchoolName = document.getElementById('sidebar-school-name');
 
 const pages = document.querySelectorAll('.page');
 const navLinks = document.querySelectorAll('.nav-link');
+
+// --- CLASS LOAN: scanned books list rendering/removal ---
+const renderClassLoanScannedBooks = () => {
+    const list = document.getElementById('class-loan-scanned-books-list');
+    if (!list) return;
+    // Clear existing
+    list.innerHTML = '';
+    // Render items
+    currentClassLoanScannedBooks.forEach((book, index) => {
+        const li = document.createElement('li');
+        li.className = 'selected-book-item flex items-center justify-between p-2 bg-gray-100 rounded mb-1';
+        li.innerHTML = `
+            <div class="flex-1">
+                <span class="font-medium">${book.title}</span>
+                <span class="text-sm text-blue-600 ml-2">(នៅសល់: ${book.remaining})</span>
+            </div>
+            <button type="button" onclick="removeClassLoanScannedBook(${index})" class="text-red-500 hover:text-red-700 ml-2">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        list.appendChild(li);
+    });
+};
+
+window.removeClassLoanScannedBook = (index) => {
+    if (index >= 0 && index < currentClassLoanScannedBooks.length) {
+        currentClassLoanScannedBooks.splice(index, 1);
+        renderClassLoanScannedBooks();
+        setTimeout(() => document.getElementById('class-loan-isbn-input')?.focus(), 50);
+    }
+};
 
 // --- AUTHENTICATION ---
 // Check initial auth state
@@ -67,8 +371,14 @@ function handleAuthState(session) {
         appContainer.classList.remove('hidden');
         setupRealtimeListeners(currentUserId);
         
-        // Navigate to home page by default
-        navigateTo('home');
+        // Navigate to last visited page if available, else default setting, else home
+        let target = 'home';
+        try {
+            const saved = localStorage.getItem('lastPage');
+            if (saved) target = saved;
+            else if (settingsData && settingsData.default_page) target = settingsData.default_page;
+        } catch (e) { /* ignore */ }
+        navigateTo(target);
     } else {
         currentUserId = null;
         appContainer.classList.add('hidden');
@@ -113,6 +423,10 @@ loginForm.addEventListener('submit', async (e) => {
 });
 
 logoutBtn.addEventListener('click', async () => {
+    try {
+        // Clear last visited page on logout
+        localStorage.removeItem('lastPage');
+    } catch (e) { /* ignore */ }
     await supabase.auth.signOut();
 });
 
@@ -134,6 +448,9 @@ const navigateTo = (pageId) => {
         }
     });
 
+    // Persist last visited page
+    try { localStorage.setItem('lastPage', pageId); } catch (e) { /* ignore */ }
+
     // Auto-focus or setup for specific pages
     if (pageId === 'class-loans') {
         populateClassLoanForm();
@@ -141,6 +458,7 @@ const navigateTo = (pageId) => {
     }
     if (pageId === 'loans') {
         window.clearLoanForm();
+        if (!loanSortSetupDone) { setupLoanSortListeners(); loanSortSetupDone = true; }
     }
     if (pageId === 'reading-log') {
         window.clearReadingLogForm();
@@ -168,7 +486,10 @@ const renderAll = () => {
     renderLocations();
     renderStudents();
     renderReadingLogs();
+    updateHomeReadingStats();
     updateDashboard();
+    renderHomeLoans();
+    populateBookDropdowns();
 };
 
 const renderBooks = () => {
@@ -180,14 +501,27 @@ const renderBooks = () => {
     if (filteredBooks.length === 0) { bookList.innerHTML = `<tr><td colspan="9" class="text-center p-4 text-gray-500">រកមិនឃើញសៀវភៅទេ។</td></tr>`; return; }
     const sortedBooks = [...filteredBooks].sort((a,b) => a.title.localeCompare(b.title));
     sortedBooks.forEach((book, index) => {
-        const loanedCount = loans.filter(loan => loan.book_id === book.id && loan.status === 'ខ្ចី').length;
-        const remaining = (book.quantity || 0) - loanedCount;
+        // Badge after title should reflect only individual borrowings (exclude class-linked)
+        const individualLoanedCount = loans.filter(loan => loan.book_id === book.id && loan.status === 'ខ្ចី' && !loan.class_loan_id).length;
+        // Compute active class-loan count for this book (sum of remaining quantities per class-loan)
+        const classActiveCount = classLoans
+            .filter(cl => cl.book_id === book.id)
+            .reduce((sum, cl) => {
+                const rem = (cl.loaned_quantity || 0) - (cl.returned_count || 0);
+                return sum + (rem > 0 ? rem : 0);
+            }, 0);
+        // Remaining stock should reflect all active borrowings (individual + class-linked)
+        const activeLoanedCountAll = loans.filter(loan => loan.book_id === book.id && loan.status === 'ខ្ចី').length;
+        const remaining = (book.quantity || 0) - activeLoanedCountAll;
         const location = locations.find(loc => loc.id === book.location_id);
         const row = document.createElement('tr');
         row.className = 'border-b';
         row.innerHTML = `
             <td class="p-3">${index + 1}</td>
-            <td class="p-3">${book.title} ${loanedCount > 0 ? `<span class="text-xs bg-yellow-200 text-yellow-800 rounded-full px-2 py-1 ml-2 no-print">ខ្ចី ${loanedCount}</span>` : ''}</td>
+            <td class="p-3">${book.title}
+                ${individualLoanedCount > 0 ? `<span class=\"text-xs bg-yellow-200 text-yellow-800 rounded-full px-2 py-1 ml-2 no-print\">ខ្ចីបុគ្គល ${individualLoanedCount}</span>` : ''}
+                ${classActiveCount > 0 ? `<span class=\"text-xs bg-blue-200 text-blue-800 rounded-full px-2 py-1 ml-2 no-print\">ខ្ចីថ្នាក់ ${classActiveCount}</span>` : ''}
+            </td>
             <td class="p-3">${book.author || ''}</td>
             <td class="p-3">${book.isbn || ''}</td>
             <td class="p-3">${book.quantity || 0}</td>
@@ -218,31 +552,151 @@ const renderLoans = () => {
         dateFilteredLoans = dateFilteredLoans.filter(loan => loan.loan_date <= endDate);
     }
 
-    // Gender Summary
+    // Group by borrower + loan_date to combine multiple books borrowed at once
+    const groupKey = (l) => `${(l.borrower || '').trim()}|${l.loan_date}`;
+    const groupsMap = new Map();
+    dateFilteredLoans.forEach(l => {
+        const key = groupKey(l);
+        if (!groupsMap.has(key)) groupsMap.set(key, []);
+        groupsMap.get(key).push(l);
+    });
+
+    // Build grouped array with aggregated info
+    let grouped = Array.from(groupsMap.entries()).map(([key, loansArr]) => {
+        const [borrower, loan_date] = key.split('|');
+        const titles = loansArr.map(x => {
+            const b = books.find(bb => bb.id === x.book_id);
+            return b ? b.title : 'សៀវភៅត្រូវបានលុប';
+        });
+        const statuses = new Set(loansArr.map(x => x.status));
+        const statusLabel = statuses.size === 1 ? loansArr[0].status : 'ចម្រុះ';
+        const anyActive = loansArr.some(x => x.status === 'ខ្ចី');
+        const allReturned = loansArr.every(x => x.status !== 'ខ្ចី');
+        const returnDates = loansArr.map(x => x.return_date).filter(Boolean).sort((a,b) => new Date(b) - new Date(a));
+        const displayReturnDate = allReturned ? (returnDates[0] || 'N/A') : 'N/A';
+        const genderVotes = new Map();
+        loansArr.forEach(x => {
+            const g = (x.borrower_gender || '').trim();
+            if (!g) return;
+            genderVotes.set(g, (genderVotes.get(g) || 0) + 1);
+        });
+        // pick most frequent gender label if any
+        let borrower_gender = '';
+        let max = 0;
+        for (const [g, c] of genderVotes.entries()) { if (c > max) { max = c; borrower_gender = g; } }
+        return {
+            borrower,
+            loan_date,
+            titles,
+            status: statusLabel,
+            anyActive,
+            return_date: displayReturnDate,
+            borrower_gender,
+            loans: loansArr
+        };
+    });
+
+    // Search Term Filtering against borrower and book titles
+    const searchTerm = searchLoansInput.value.toLowerCase();
+    if (searchTerm) {
+        grouped = grouped.filter(g => {
+            const borrowerMatch = g.borrower && g.borrower.toLowerCase().includes(searchTerm);
+            const titleMatch = g.titles.some(t => (t || '').toLowerCase().includes(searchTerm));
+            return borrowerMatch || titleMatch;
+        });
+    }
+
+    // Gender Summary based on grouped borrowers
     let maleCount = 0;
     let femaleCount = 0;
-    dateFilteredLoans.forEach(loan => {
-        if (loan.borrower_gender === 'ប្រុស' || loan.borrower_gender === 'M') maleCount++;
-        if (loan.borrower_gender === 'ស្រី' || loan.borrower_gender === 'F') femaleCount++;
+    grouped.forEach(g => {
+        if (g.borrower_gender === 'ប្រុស' || g.borrower_gender === 'M') maleCount++;
+        if (g.borrower_gender === 'ស្រី' || g.borrower_gender === 'F') femaleCount++;
     });
-    loanSummary.textContent = `សរុប: ${dateFilteredLoans.length} នាក់ (ប្រុស: ${maleCount} នាក់, ស្រី: ${femaleCount} នាក់)`;
+    loanSummary.textContent = `សរុប: ${grouped.length} នាក់ (ប្រុស: ${maleCount} នាក់, ស្រី: ${femaleCount} នាក់)`;
 
-    // Search Term Filtering
-    const searchTerm = searchLoansInput.value.toLowerCase();
-    const filteredLoans = dateFilteredLoans.filter(loan => { 
-        const book = books.find(b => b.id === loan.book_id); 
-        return (loan.borrower && loan.borrower.toLowerCase().includes(searchTerm)) || (book && book.title.toLowerCase().includes(searchTerm)); 
-    });
-    
+    // Render grouped rows
     loanList.innerHTML = '';
-    if (filteredLoans.length === 0) { loanList.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-gray-500">រកមិនឃើញកំណត់ត្រាខ្ចីទេ។</td></tr>`; return; }
-    
-    const sortedLoans = [...filteredLoans].sort((a,b) => new Date(b.loan_date) - new Date(a.loan_date));
-    sortedLoans.forEach((loan, index) => {
-        const book = books.find(b => b.id === loan.book_id);
+    if (grouped.length === 0) { loanList.innerHTML = `<tr><td colspan="7" class="text-center p-4 text-gray-500">រកមិនឃើញកំណត់ត្រាខ្ចីទេ។</td></tr>`; return; }
+
+    // Sorting
+    const statusOrder = (s) => {
+        // Order: ខ្ចី (Borrowed) < សង (Returned) < ចម្រុះ (Mixed)
+        if (s === 'ខ្ចី') return 0;
+        if (s === 'សង') return 1;
+        return 2; // ចម្រុះ or others
+    };
+    const val = (g, key) => {
+        switch (key) {
+            case 'borrower': return (g.borrower || '').toLowerCase();
+            case 'title': return (g.titles.join(', ') || '').toLowerCase();
+            case 'loan_date': return g.loan_date || '';
+            case 'return_date': return g.return_date || '';
+            case 'status': return statusOrder(g.status);
+            case 'serial':
+            default:
+                return g.loan_date || '';
+        }
+    };
+    const cmp = (a, b) => {
+        let A = val(a, loanSortKey);
+        let B = val(b, loanSortKey);
+        // Date comparisons for date keys
+        if (loanSortKey === 'loan_date' || loanSortKey === 'return_date' || loanSortKey === 'serial') {
+            // Treat empty/"N/A" as minimal for asc
+            const aDate = (A && A !== 'N/A') ? new Date(A) : null;
+            const bDate = (B && B !== 'N/A') ? new Date(B) : null;
+            if (aDate && bDate) return aDate - bDate;
+            if (aDate && !bDate) return 1;
+            if (!aDate && bDate) return -1;
+            return 0;
+        }
+        if (loanSortKey === 'status') {
+            return A - B;
+        }
+        // String compare
+        return String(A).localeCompare(String(B));
+    };
+    const sortedGroups = [...grouped].sort((a, b) => {
+        const res = cmp(a, b);
+        return loanSortDir === 'asc' ? res : -res;
+    });
+    sortedGroups.forEach((g, index) => {
         const row = document.createElement('tr');
         row.className = 'border-b';
-        row.innerHTML = `<td class="p-3">${index + 1}</td><td class="p-3">${book ? book.title : 'សៀវភៅត្រូវបានលុប'}</td><td class="p-3">${loan.borrower}</td><td class="p-3">${loan.loan_date}</td><td class="p-3">${loan.return_date || 'N/A'}</td><td class="p-3"><span class="px-2 py-1 text-xs rounded-full ${loan.status === 'ខ្ចី' ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}">${loan.status}</span></td><td class="p-3 no-print">${loan.status === 'ខ្ចី' ? `<button onclick="window.returnBook('${loan.id}')" class="text-green-500 hover:text-green-700 mr-2" title="សម្គាល់ថាសងវិញ"><i class="fas fa-undo"></i></button>` : ''}<button onclick="window.deleteLoan('${loan.id}')" class="text-red-500 hover:text-red-700" title="លុបកំណត់ត្រា"><i class="fas fa-trash"></i></button></td>`;
+        // Compose titles list with counts: Title(unreturned)(returned)
+        const counts = new Map(); // book_id -> { title, unreturned, returned }
+        g.loans.forEach(item => {
+            const bookId = String(item.book_id);
+            const title = (books.find(bb => String(bb.id) === bookId)?.title) || 'N/A';
+            if (!counts.has(bookId)) counts.set(bookId, { title, unreturned: 0, returned: 0 });
+            if (item.status === 'សង') counts.get(bookId).returned += 1; else counts.get(bookId).unreturned += 1;
+        });
+        const titlesText = Array.from(counts.values())
+            .sort((a, b) => a.title.localeCompare(b.title))
+            .map(v => `${v.title}(<span class="text-red-600">${v.unreturned}</span>) (<span class="text-green-600">${v.returned}</span>)`)
+            .join(', ');
+        // Status badge class
+        const statusClass = g.status === 'ខ្ចី' ? 'bg-yellow-200 text-yellow-800' : (g.status === 'សង' ? 'bg-green-200 text-green-800' : 'bg-blue-200 text-blue-800');
+
+        // Build actions: single grouped return and delete buttons
+        let actionsHTML = '';
+        const hasUnreturned = g.loans.some(item => item.status === 'ខ្ចី');
+        const groupKey = `${g.borrower}|${g.loan_date}`;
+        if (hasUnreturned) {
+            actionsHTML += `<button onclick="window.openGroupedReturnModal('${groupKey}')" class="text-teal-500 hover:text-teal-700 mr-2" title="សងសៀវភៅជាក្រុម"><i class="fas fa-book-reader"></i></button>`;
+        }
+        actionsHTML += `<button onclick="window.deleteGroupedLoan('${groupKey}')" class="text-red-500 hover:text-red-700 mr-2" title="លុបការខ្ចីជាក្រុម"><i class="fas fa-trash"></i></button>`;
+
+        row.innerHTML = `
+            <td class="p-3">${index + 1}</td>
+            <td class="p-3">${g.borrower}</td>
+            <td class="p-3">${titlesText}</td>
+            <td class="p-3">${g.loan_date}</td>
+            <td class="p-3">${g.return_date || 'N/A'}</td>
+            <td class="p-3"><span class="px-2 py-1 text-xs rounded-full ${statusClass}">${g.status}</span></td>
+            <td class="p-3 no-print">${actionsHTML}</td>
+        `;
         loanList.appendChild(row);
     });
 };
@@ -258,28 +712,66 @@ const renderClassLoans = () => {
 
     classLoanList.innerHTML = '';
     if (filtered.length === 0) { classLoanList.innerHTML = `<tr><td colspan="6" class="text-center p-4 text-gray-500">មិនទាន់មានប្រវត្តិខ្ចីតាមថ្នាក់ទេ។</td></tr>`; return; }
-    
-    const sortedClassLoans = [...filtered].sort((a,b) => new Date(b.loan_date) - new Date(a.loan_date));
-    sortedClassLoans.forEach((loan, index) => {
-        const book = books.find(b => b.id === loan.book_id);
+
+    // Group by class_name + loan_date so multiple books for one class appear on one row
+    const keyOf = (l) => `${(l.class_name || '').trim()}|${l.loan_date}`;
+    const groupMap = new Map();
+    filtered.forEach(l => {
+        const key = keyOf(l);
+        if (!groupMap.has(key)) groupMap.set(key, []);
+        groupMap.get(key).push(l);
+    });
+
+    // Build grouped summaries
+    const grouped = Array.from(groupMap.entries()).map(([key, arr]) => {
+        const [class_name, loan_date] = key.split('|');
+        const titles = arr.map(item => {
+            const b = books.find(bb => bb.id === item.book_id);
+            const bookTitle = b ? b.title : 'សៀវភៅត្រូវបានលុប';
+            const loanedQty = item.loaned_quantity || 0;
+            const returnedQty = item.returned_count || 0;
+            const unreturned = Math.max(0, loanedQty - returnedQty);
+            return `${bookTitle} (<span class="text-red-600">${unreturned}</span>) (<span class="text-green-600">${returnedQty}</span>)`;
+        });
+        const totalLoaned = arr.reduce((s, x) => s + (x.loaned_quantity || 0), 0);
+        const totalReturned = arr.reduce((s, x) => s + (x.returned_count || 0), 0);
+        const allReturned = totalReturned >= totalLoaned && totalLoaned > 0;
+        return { class_name, loan_date, titles, totalLoaned, totalReturned, items: arr, allReturned };
+    });
+
+    // Sort by loan_date desc
+    const sortedGroups = [...grouped].sort((a, b) => new Date(b.loan_date) - new Date(a.loan_date));
+
+    // Render rows
+    sortedGroups.forEach((g, index) => {
         const row = document.createElement('tr');
         row.className = 'border-b';
-        const isFullyReturned = (loan.returned_count || 0) >= loan.loaned_quantity;
+
+        // Build actions for grouped items - single smart return button + individual edit/delete
+        let actionsHTML = '';
+        
+        // Add single grouped return button if any books are not fully returned
+        const hasUnreturnedBooks = g.items.some(item => (item.returned_count || 0) < (item.loaned_quantity || 0));
+        if (hasUnreturnedBooks) {
+            const groupKey = `${g.class_name}|${g.loan_date}`;
+            actionsHTML += `<button onclick="window.openGroupedClassReturnModal('${groupKey}')" class="text-teal-500 hover:text-teal-700 mr-2" title="សងសៀវភៅតាមថ្នាក់"><i class="fas fa-book-reader"></i></button>`;
+        }
+        
+        // Add single grouped delete button
+        const groupKey = `${g.class_name}|${g.loan_date}`;
+        actionsHTML += `<button onclick="window.deleteGroupedClassLoan('${groupKey}')" class="text-red-500 hover:text-red-700 mr-2" title="លុបការខ្ចីតាមថ្នាក់"><i class="fas fa-trash"></i></button>`;
+
         row.innerHTML = `
             <td class="p-3">${index + 1}</td>
-            <td class="p-3">${book ? book.title : 'សៀវភៅត្រូវបានលុប'}</td>
-            <td class="p-3">${loan.class_name}</td>
-            <td class="p-3">${loan.loan_date}</td>
+            <td class="p-3">${g.class_name}</td>
+            <td class="p-3">${g.titles.join(', ')}</td>
+            <td class="p-3">${g.loan_date}</td>
             <td class="p-3">
-                <span class="font-bold ${isFullyReturned ? 'text-green-600' : 'text-orange-600'}">
-                    សងបាន: ${loan.returned_count || 0} / ${loan.loaned_quantity}
+                <span class="font-bold ${g.allReturned ? 'text-green-600' : 'text-orange-600'}">
+                    សងបាន: ${g.totalReturned} / ${g.totalLoaned}
                 </span>
             </td>
-            <td class="p-3 no-print">
-                ${!isFullyReturned ? `<button onclick="window.openClassReturnModal('${loan.id}')" class="text-teal-500 hover:text-teal-700 mr-2" title="សងសៀវភៅ"><i class="fas fa-book-reader"></i></button>` : ''}
-                <button onclick="window.openClassLoanEditModal('${loan.id}')" class="text-blue-500 hover:text-blue-700 mr-2" title="កែប្រែ"><i class="fas fa-edit"></i></button>
-                <button onclick="window.deleteClassLoan('${loan.id}')" class="text-red-500 hover:text-red-700" title="លុបប្រវត្តិនេះ"><i class="fas fa-trash"></i></button>
-            </td>
+            <td class="p-3 no-print">${actionsHTML}</td>
         `;
         classLoanList.appendChild(row);
     });
@@ -479,8 +971,249 @@ const updateDashboard = () => {
     document.getElementById('total-books').textContent = books.length;
     const totalQuantity = books.reduce((sum, book) => sum + (parseInt(book.quantity, 10) || 0), 0);
     document.getElementById('total-quantity').textContent = totalQuantity;
-    const activeLoans = loans.filter(l => l.status === 'ខ្ចី').length;
-    document.getElementById('total-loans').textContent = activeLoans;
+    // Active individual loans (not part of class loans)
+    const individualActive = loans.filter(l => l.status === 'ខ្ចី' && !l.class_loan_id).length;
+
+    // For class loans: prefer counting linked active individual loan rows if they exist; otherwise
+    // fall back to outstanding quantity from class_loans (loaned_quantity - returned_count)
+    const linkedActiveByClassId = new Map();
+    loans.forEach(l => {
+        if (l.status === 'ខ្ចី' && l.class_loan_id) {
+            const key = String(l.class_loan_id);
+            linkedActiveByClassId.set(key, (linkedActiveByClassId.get(key) || 0) + 1);
+        }
+    });
+
+    let classActiveTotal = 0;
+    classLoans.forEach(cl => {
+        const key = String(cl.id);
+        const linkedCount = linkedActiveByClassId.get(key) || 0;
+        if (linkedCount > 0) {
+            classActiveTotal += linkedCount;
+        } else {
+            const loaned = Number(cl.loaned_quantity || 0);
+            const returned = Number(cl.returned_count || 0);
+            const remaining = Math.max(0, loaned - returned);
+            classActiveTotal += remaining;
+        }
+    });
+
+    const totalActiveLoans = individualActive + classActiveTotal;
+    document.getElementById('total-loans').textContent = totalActiveLoans;
+};
+
+// Update homepage reading log gender stats (total, male, female + bars) + top book
+function updateHomeReadingStats() {
+    const totalEl = document.getElementById('home-readings-total');
+    const maleEl = document.getElementById('home-readings-male');
+    const femaleEl = document.getElementById('home-readings-female');
+    const maleBar = document.getElementById('home-readings-male-bar');
+    const femaleBar = document.getElementById('home-readings-female-bar');
+    const topBookEl = document.getElementById('home-top-book');
+    if (!totalEl || !maleEl || !femaleEl || !maleBar || !femaleBar || !topBookEl) return;
+
+    const total = readingLogs.length;
+    let male = 0, female = 0;
+    readingLogs.forEach(log => {
+        const g = (log.student_gender || '').trim();
+        if (g === 'ប្រុស' || g === 'M') male++;
+        else if (g === 'ស្រី' || g === 'F') female++;
+    });
+
+    totalEl.textContent = String(total);
+    maleEl.textContent = String(male);
+    femaleEl.textContent = String(female);
+
+    const denom = total > 0 ? total : 1;
+    const malePct = Math.min(100, Math.round((male / denom) * 100));
+    const femalePct = Math.min(100, Math.round((female / denom) * 100));
+    maleBar.style.width = malePct + '%';
+    femaleBar.style.width = femalePct + '%';
+
+    // Find most read book with title and author
+    const bookCounts = new Map();
+    readingLogs.forEach(log => {
+        if (log.books) {
+            try {
+                const booksData = typeof log.books === 'string' ? JSON.parse(log.books) : log.books;
+                if (Array.isArray(booksData)) {
+                    booksData.forEach(b => {
+                        const title = b.title || b;
+                        if (title) {
+                            // Find book in books array to get author
+                            const bookRecord = books.find(book => book.title === title);
+                            const author = bookRecord?.author || '';
+                            const key = title;
+                            const displayText = author ? `${title} ${author}` : title;
+                            
+                            if (!bookCounts.has(key)) {
+                                bookCounts.set(key, { count: 0, displayText });
+                            }
+                            bookCounts.get(key).count++;
+                        }
+                    });
+                } else {
+                    const title = booksData.title || booksData;
+                    if (title) {
+                        const bookRecord = books.find(book => book.title === title);
+                        const author = bookRecord?.author || '';
+                        const key = title;
+                        const displayText = author ? `${title} ${author}` : title;
+                        
+                        if (!bookCounts.has(key)) {
+                            bookCounts.set(key, { count: 0, displayText });
+                        }
+                        bookCounts.get(key).count++;
+                    }
+                }
+            } catch (e) {
+                const title = log.books.toString();
+                if (title) {
+                    const bookRecord = books.find(book => book.title === title);
+                    const author = bookRecord?.author || '';
+                    const key = title;
+                    const displayText = author ? `${title} ${author}` : title;
+                    
+                    if (!bookCounts.has(key)) {
+                        bookCounts.set(key, { count: 0, displayText });
+                    }
+                    bookCounts.get(key).count++;
+                }
+            }
+        }
+    });
+
+    if (bookCounts.size === 0) {
+        topBookEl.textContent = 'មិនទាន់មានទិន្នន័យ';
+    } else {
+        const topBook = Array.from(bookCounts.entries())
+            .sort((a, b) => b[1].count - a[1].count)[0];
+        topBookEl.innerHTML = `<i class="fas fa-star text-yellow-400 mr-1" aria-hidden="true"></i> សៀវភៅមើលច្រើនជាងគេ៖ ${topBook[1].displayText} (${topBook[1].count}ដង)`;
+    }
+}
+
+// Update homepage most read books section
+function updateHomeMostReadBooks() {
+    const container = document.getElementById('home-most-read-books');
+    if (!container) return;
+
+    // Count book occurrences in reading logs
+    const bookCounts = new Map();
+    readingLogs.forEach(log => {
+        if (log.books) {
+            try {
+                // Handle both JSON string and array formats
+                const booksData = typeof log.books === 'string' ? JSON.parse(log.books) : log.books;
+                if (Array.isArray(booksData)) {
+                    booksData.forEach(b => {
+                        const title = b.title || b;
+                        if (title) {
+                            bookCounts.set(title, (bookCounts.get(title) || 0) + 1);
+                        }
+                    });
+                } else {
+                    const title = booksData.title || booksData;
+                    if (title) {
+                        bookCounts.set(title, (bookCounts.get(title) || 0) + 1);
+                    }
+                }
+            } catch (e) {
+                // If parsing fails, try to display as string
+                const title = log.books.toString();
+                if (title) {
+                    bookCounts.set(title, (bookCounts.get(title) || 0) + 1);
+                }
+            }
+        }
+    });
+
+    // Sort by count descending and take top 5
+    const sortedBooks = Array.from(bookCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    if (sortedBooks.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">មិនទាន់មានទិន្នន័យ</p>';
+        return;
+    }
+
+    // Render the list
+    container.innerHTML = sortedBooks.map((entry, index) => {
+        const [title, count] = entry;
+        return `
+            <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0">
+                <div class="flex items-center">
+                    <span class="text-sm font-bold text-gray-500 mr-3">${index + 1}.</span>
+                    <span class="text-gray-800">${title}</span>
+                </div>
+                <span class="text-sm font-semibold text-blue-600">${count} ដង</span>
+            </div>
+        `;
+    }).join('');
+}
+
+// Render summary list of active individual loans on Home page (plain text)
+const renderHomeLoans = () => {
+    const leftEl = document.getElementById('home-loans-text-left');
+    const rightEl = document.getElementById('home-loans-text-right');
+    if (!leftEl || !rightEl) return;
+
+    // Active individual loans only
+    const activeIndLoans = loans.filter(l => !l.class_loan_id && l.status === 'ខ្ចី');
+
+    if (activeIndLoans.length === 0) {
+        leftEl.innerHTML = 'គ្មានទិន្នន័យ';
+        rightEl.innerHTML = '';
+        return;
+    }
+
+    // Group: borrower -> { books: Map(book_id->qty), latestDate: string }
+    const borrowerMap = new Map();
+    activeIndLoans.forEach(l => {
+        const borrower = (l.borrower || '').trim();
+        if (!borrowerMap.has(borrower)) borrowerMap.set(borrower, { books: new Map(), latestDate: null });
+        const entry = borrowerMap.get(borrower);
+        const key = String(l.book_id);
+        entry.books.set(key, (entry.books.get(key) || 0) + 1);
+        const dateStr = l.loan_date || l.loanDate || null;
+        if (dateStr) {
+            if (!entry.latestDate || new Date(dateStr) > new Date(entry.latestDate)) {
+                entry.latestDate = dateStr;
+            }
+        }
+    });
+
+    // Build lines
+    const formatKhmerDate = (dateStr) => {
+        const d = new Date(dateStr);
+        if (isNaN(d)) return dateStr || '';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = d.getMonth() + 1;
+        const year = d.getFullYear();
+        const khmerMonths = {
+            1: 'មករា', 2: 'កុម្ភៈ', 3: 'មីនា', 4: 'មេសា', 5: 'ឧសភា', 6: 'មិថុនា',
+            7: 'កក្កដា', 8: 'សីហា', 9: 'កញ្ញា', 10: 'តុលា', 11: 'វិច្ឆិកា', 12: 'ធ្នូ'
+        };
+        return `${day}/${khmerMonths[month]}/${year}`;
+    };
+    const borrowers = Array.from(borrowerMap.keys()).sort((a, b) => a.localeCompare(b));
+    const lines = [];
+    borrowers.forEach(name => {
+        const entry = borrowerMap.get(name);
+        const entries = Array.from(entry.books.entries()).map(([bookId, qty]) => {
+            const book = books.find(b => b.id === bookId);
+            const title = book && book.title ? book.title : 'សៀវភៅត្រូវបានលុប';
+            return `<span class="text-black">${title}</span>(<span class="text-red-600">${qty}</span>)`;
+        }).sort((a, b) => a.localeCompare(b));
+        const dateSuffix = entry.latestDate ? `  <span class="text-black">ថ្ងៃខ្ចី: ${formatKhmerDate(entry.latestDate)}</span>` : '';
+        lines.push(`- <span class="text-black">${name}</span>: ${entries.join(', ')}${dateSuffix}`);
+    });
+
+    const mid = Math.ceil(lines.length / 2);
+    const leftLinesHTML = lines.slice(0, mid).join('<br>');
+    const rightLinesHTML = lines.slice(mid).join('<br>');
+    leftEl.innerHTML = leftLinesHTML;
+    rightEl.innerHTML = rightLinesHTML;
 };
 
 const populateClassLoanFilter = () => {
@@ -1317,6 +2050,7 @@ window.openBookModal = (id = null) => {
             document.getElementById('quantity').value = book.quantity || 0;
             document.getElementById('book-location-id').value = book.location_id || '';
             document.getElementById('source').value = book.source || '';
+            document.getElementById('book-url').value = book.book_url || '';
         }
     } else { document.getElementById('book-modal-title').textContent = 'បន្ថែមសៀវភៅថ្មី'; }
     document.getElementById('book-modal').classList.remove('hidden');
@@ -1343,12 +2077,20 @@ window.deleteBook = async (id) => {
     }
 };
 
+// Add real-time Khmer to English number conversion for book ISBN field
+document.getElementById('isbn').addEventListener('input', (e) => {
+    const convertedValue = convertKhmerToEnglishNumbers(e.target.value);
+    if (convertedValue !== e.target.value) {
+        e.target.value = convertedValue;
+    }
+});
+
 document.getElementById('book-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!currentUserId) return;
     
     const id = document.getElementById('book-id').value;
-    const isbnValue = document.getElementById('isbn').value.trim();
+    const isbnValue = convertKhmerToEnglishNumbers(document.getElementById('isbn').value.trim());
     
     const bookData = {
         title: document.getElementById('title').value,
@@ -1357,6 +2099,7 @@ document.getElementById('book-form').addEventListener('submit', async (e) => {
         quantity: parseInt(document.getElementById('quantity').value, 10) || 0,
         location_id: document.getElementById('book-location-id').value,
         source: document.getElementById('source').value,
+        book_url: document.getElementById('book-url').value,
     };
 
     if (!bookData.location_id) {
@@ -1468,6 +2211,9 @@ window.clearLoanForm = () => {
         }
     });
     
+    // Clear selected books list
+    clearSelectedLoanBooks();
+    
     setTimeout(() => {
         const isbnInput = document.getElementById('loan-isbn-input');
         if (isbnInput) {
@@ -1477,22 +2223,37 @@ window.clearLoanForm = () => {
     }, 100);
 };
 
-document.getElementById('loan-isbn-input').addEventListener('input', () => {
-    const isbn = document.getElementById('loan-isbn-input').value.trim();
-    const bookIdInput = document.getElementById('loan-book-id');
-    const loanBookTitleDisplay = document.getElementById('loan-book-title-display');
+document.getElementById('loan-isbn-input').addEventListener('input', (e) => {
+    // Convert Khmer numbers to English numbers
+    const convertedValue = convertKhmerToEnglishNumbers(e.target.value);
+    if (convertedValue !== e.target.value) {
+        e.target.value = convertedValue;
+    }
+    
+    const isbn = convertedValue.trim();
     const loanBookError = document.getElementById('loan-book-error');
-    loanBookTitleDisplay.value = ''; bookIdInput.value = ''; loanBookError.textContent = '';
-    if (!isbn) return;
-    const foundBook = books.find(b => b.isbn && b.isbn.toLowerCase() === isbn.toLowerCase());
-    if(foundBook) {
-        const loanedCount = loans.filter(loan => loan.book_id === foundBook.id && loan.status === 'ខ្ចី').length;
-        const remaining = (foundBook.quantity || 0) - loanedCount;
-        if (remaining > 0) { 
-            loanBookTitleDisplay.value = `${foundBook.title}`; 
-            bookIdInput.value = foundBook.id;
-            // Auto-focus to student scan field after book is found
-            setTimeout(() => document.getElementById('loan-student-id-input').focus(), 100);
+    loanBookError.textContent = '';
+    
+    if (isbn) {
+        const foundBook = books.find(book => book.isbn === isbn);
+        if (foundBook) {
+            const remaining = (foundBook.quantity || 0) - loans.filter(loan => loan.book_id === foundBook.id && loan.status === 'ខ្ចី').length;
+            if (remaining <= 0) {
+                loanBookError.textContent = 'សៀវភៅនេះអស់ស្តុកហើយ។';
+                return;
+            }
+            
+            const success = addSelectedLoanBook(foundBook.id);
+            if (success) {
+                // Clear the input for next scan
+                document.getElementById('loan-isbn-input').value = '';
+                loanBookError.textContent = '';
+                // Always focus back to scan textbox for fast consecutive scans
+                setTimeout(() => {
+                    const isbnInput = document.getElementById('loan-isbn-input');
+                    if (isbnInput) isbnInput.focus();
+                }, 50);
+            }
         } else { 
             loanBookError.textContent = 'សៀវភៅនេះអស់ពីស្តុកហើយ'; 
         }
@@ -1528,26 +2289,33 @@ document.getElementById('loan-student-id-input').addEventListener('input', () =>
 document.getElementById('loan-form').addEventListener('submit', async (e) => {
     e.preventDefault(); 
     if (!currentUserId) return;
-    const bookId = document.getElementById('loan-book-id').value;
     const borrower = document.getElementById('loan-borrower-name-display').value;
-    if (!bookId || !borrower) { 
-        alert('សូមបំពេញព័ត៌មានឲ្យបានត្រឹមត្រូវ!'); 
+    
+    // Check if books are selected and borrower name is provided
+    if (selectedLoanBooks.length === 0 || !borrower) { 
+        alert('សូមបំពេញព័ត៌មានឲ្យបានត្រឹមត្រូវ! (ជ្រើសរើសសៀវភៅ និងបញ្ចូលឈ្មោះអ្នកខ្ចី)'); 
         return; 
     }
-    const newLoan = { 
-        book_id: bookId, 
-        borrower: borrower, 
-        borrower_gender: document.getElementById('loan-borrower-gender').value,
-        loan_date: new Date().toISOString().split('T')[0], 
-        return_date: null, 
-        status: 'ខ្ចី',
-        user_id: currentUserId
-    };
-    try { 
+    try {
+        const borrowerGender = document.getElementById('loan-borrower-gender').value;
+        const loanDate = new Date().toISOString().split('T')[0];
+        
+        // Create loans for all selected books
+        const loansToInsert = selectedLoanBooks.map(book => ({
+            book_id: book.id,
+            borrower: borrower,
+            borrower_gender: borrowerGender,
+            loan_date: loanDate,
+            return_date: null,
+            status: 'ខ្ចី',
+            user_id: currentUserId
+        }));
+        
         const { error } = await supabase
             .from('loans')
-            .insert([newLoan]);
+            .insert(loansToInsert);
         if (error) throw error;
+        
         await loadLoans(currentUserId);
         renderAll();
         clearLoanForm();
@@ -1609,6 +2377,8 @@ function populateClassLoanForm() {
     document.getElementById('class-loan-book-id').value = '';
     document.getElementById('class-loan-book-error').textContent = '';
     document.getElementById('class-info-text').textContent = '';
+    document.getElementById('class-loan-scanned-books-list').innerHTML = '';
+    currentClassLoanScannedBooks = [];
     const studentListContainer = document.getElementById('class-loan-student-list-container');
     studentListContainer.innerHTML = '';
     studentListContainer.classList.add('hidden');
@@ -1626,19 +2396,49 @@ function populateClassLoanForm() {
     }
 }
 
-document.getElementById('class-loan-isbn-input').addEventListener('input', () => {
-    const isbn = document.getElementById('class-loan-isbn-input').value.trim();
+// Disable enter key submission for class loan form
+document.getElementById('class-loan-form').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+    }
+});
+
+document.getElementById('class-loan-isbn-input').addEventListener('input', (e) => {
+    // Convert Khmer numbers to English numbers
+    const convertedValue = convertKhmerToEnglishNumbers(e.target.value);
+    if (convertedValue !== e.target.value) {
+        e.target.value = convertedValue;
+    }
+    
+    const isbn = convertedValue.trim();
     const bookIdInput = document.getElementById('class-loan-book-id');
     const classLoanBookTitleDisplay = document.getElementById('class-loan-book-title-display');
     const classLoanBookError = document.getElementById('class-loan-book-error');
-    classLoanBookTitleDisplay.value = ''; bookIdInput.value = ''; classLoanBookError.textContent = '';
-    if (!isbn) return;
-    const foundBook = books.find(b => b.isbn && b.isbn.toLowerCase() === isbn.toLowerCase());
-    if(foundBook) {
-        const loanedCount = loans.filter(loan => loan.book_id === foundBook.id && loan.status === 'ខ្ចី').length;
-        const remaining = (foundBook.quantity || 0) - loanedCount;
-        classLoanBookTitleDisplay.value = `${foundBook.title} (នៅសល់ ${remaining})`;
-        bookIdInput.value = foundBook.id;
+    classLoanBookError.textContent = '';
+    
+    if (isbn) {
+        const foundBook = books.find(book => book.isbn === isbn);
+        if (foundBook) {
+            const remaining = (foundBook.quantity || 0) - loans.filter(loan => loan.book_id === foundBook.id && loan.status === 'ខ្ចី').length;
+            if (remaining <= 0) {
+                classLoanBookError.textContent = 'សៀវភៅនេះអស់ស្តុកហើយ។';
+                return;
+            }
+            
+            currentClassLoanScannedBooks.push({ id: foundBook.id, title: foundBook.title, remaining });
+            renderClassLoanScannedBooks();
+            
+            // Clear the input for next scan
+            document.getElementById('class-loan-isbn-input').value = '';
+            classLoanBookTitleDisplay.value = `${foundBook.title} (បានបន្ថែម)`;
+            // Focus back to scan textbox for rapid entry
+            setTimeout(() => {
+                const input = document.getElementById('class-loan-isbn-input');
+                if (input) input.focus();
+            }, 50);
+        } else {
+            classLoanBookError.textContent = 'សៀវភៅនេះបានស្កេនរួចហើយ';
+        }
     } else { classLoanBookError.textContent = 'រកមិនឃើញ ISBN នេះទេ'; }
 });
 
@@ -1710,71 +2510,75 @@ document.getElementById('class-loan-form').addEventListener('submit', async (e) 
     e.preventDefault(); 
     if (!currentUserId) return;
 
-    const bookId = document.getElementById('class-loan-book-id').value;
     const className = classLoanClassSelect.value;
     const checkedStudentCheckboxes = document.querySelectorAll('#class-loan-student-list-container input[type="checkbox"]:checked');
     const quantity = checkedStudentCheckboxes.length;
 
-    if (!bookId || !className || quantity === 0) {
-        alert('សូមជ្រើសរើសសៀវភៅ, ថ្នាក់, និងសិស្សយ៉ាងហោចណាស់ម្នាក់។');
+    if (currentClassLoanScannedBooks.length === 0 || !className || quantity === 0) {
+        alert('សូមស្កេនសៀវភៅយ៉ាងហោចណាស់មួយក្បាល, ជ្រើសរើសថ្នាក់, និងសិស្សយ៉ាងហោចណាស់ម្នាក់។');
         return;
     }
     
-    const selectedBook = books.find(b => b.id === bookId);
-    if (!selectedBook) {
-        alert('រកមិនឃើញព័ត៌មានសៀវភៅទេ។');
-        return;
-    }
-    const currentlyLoanedCount = loans.filter(l => l.book_id === bookId && l.status === 'ខ្ចី').length;
-    const availableCopies = selectedBook.quantity - currentlyLoanedCount;
+    // Check availability for all scanned books
+    for (const scannedBook of currentClassLoanScannedBooks) {
+        const selectedBook = books.find(b => b.id === scannedBook.id);
+        if (!selectedBook) {
+            alert(`រកមិនឃើញព័ត៌មានសៀវភៅ: ${scannedBook.title}`);
+            return;
+        }
+        const currentlyLoanedCount = loans.filter(l => l.book_id === scannedBook.id && l.status === 'ខ្ចី').length;
+        const availableCopies = selectedBook.quantity - currentlyLoanedCount;
 
-    if (quantity > availableCopies) {
-        alert(`សៀវភៅមិនគ្រប់គ្រាន់! អ្នកចង់ខ្ចី ${quantity} ក្បាល, ប៉ុន្តែនៅសល់តែ ${availableCopies} ក្បាលសម្រាប់ខ្ចី។`);
-        return;
+        if (quantity > availableCopies) {
+            alert(`សៀវភៅមិនគ្រប់គ្រាន់! សៀវភៅ "${scannedBook.title}" អ្នកចង់ខ្ចី ${quantity} ក្បាល, ប៉ុន្តែនៅសល់តែ ${availableCopies} ក្បាលសម្រាប់ខ្ចី។`);
+            return;
+        }
     }
 
     loadingOverlay.classList.remove('hidden');
     try {
         const today = new Date().toISOString().split('T')[0];
         
-        // Create class loan record
-        const { data: classLoanData, error: classLoanError } = await supabase
-            .from('class_loans')
-            .insert([{
-                book_id: bookId, 
-                class_name: className, 
-                loaned_quantity: quantity, 
-                loan_date: today, 
-                returned_count: 0, 
-                status: 'ខ្ចី',
-                user_id: currentUserId
-            }])
-            .select();
-        
-        if (classLoanError) throw classLoanError;
-        const classLoanId = classLoanData[0].id;
-        
-        // Create individual loan records
-        const loanRecords = [];
-        checkedStudentCheckboxes.forEach(checkbox => {
-            const borrowerText = `${checkbox.dataset.fullName} - ${className}`;
-            loanRecords.push({ 
-                book_id: bookId, 
-                borrower: borrowerText, 
-                loan_date: today, 
-                return_date: null, 
-                status: 'ខ្ចី', 
-                class_loan_id: classLoanId, 
-                borrower_gender: checkbox.dataset.gender || '',
-                user_id: currentUserId
+        // Create class loan records for each book
+        for (const scannedBook of currentClassLoanScannedBooks) {
+            const { data: classLoanData, error: classLoanError } = await supabase
+                .from('class_loans')
+                .insert([{
+                    book_id: scannedBook.id, 
+                    class_name: className, 
+                    loaned_quantity: quantity, 
+                    loan_date: today, 
+                    returned_count: 0, 
+                    status: 'ខ្ចី',
+                    user_id: currentUserId
+                }])
+                .select();
+            
+            if (classLoanError) throw classLoanError;
+            const classLoanId = classLoanData[0].id;
+            
+            // Create individual loan records for this book
+            const loanRecords = [];
+            checkedStudentCheckboxes.forEach(checkbox => {
+                const borrowerText = `${checkbox.dataset.fullName} - ${className}`;
+                loanRecords.push({ 
+                    book_id: scannedBook.id, 
+                    borrower: borrowerText, 
+                    loan_date: today, 
+                    return_date: null, 
+                    status: 'ខ្ចី', 
+                    class_loan_id: classLoanId, 
+                    borrower_gender: checkbox.dataset.gender || '',
+                    user_id: currentUserId
+                });
             });
-        });
-        
-        const { error: loansError } = await supabase
-            .from('loans')
-            .insert(loanRecords);
-        
-        if (loansError) throw loansError;
+            
+            const { error: loansError } = await supabase
+                .from('loans')
+                .insert(loanRecords);
+            
+            if (loansError) throw loansError;
+        }
         await loadLoans(currentUserId);
         await loadClassLoans(currentUserId);
         renderAll();
@@ -1850,10 +2654,240 @@ document.getElementById('class-return-form').addEventListener('submit', async (e
             .eq('user_id', currentUserId);
         
         if (updateClassLoanError) throw updateClassLoanError;
+        
+        // Reload data to update the UI
+        await loadLoans(currentUserId);
+        await loadClassLoans(currentUserId);
+        renderAll();
         closeClassReturnModal();
     } catch (err) { console.error("Error updating class loan return: ", err); alert("មានបញ្ហាក្នុងការរក្សាទុកការសង។");
     } finally { loadingOverlay.classList.add('hidden'); }
 });
+
+// Grouped Class Return Modal Functions
+window.openGroupedClassReturnModal = (groupKey) => {
+    const [className, loanDate] = groupKey.split('|');
+    
+    // Find all class loans for this group
+    const groupedLoans = classLoans.filter(loan => 
+        loan.class_name === className && loan.loan_date === loanDate
+    );
+    
+    if (groupedLoans.length === 0) return;
+    
+    // Populate modal header
+    document.getElementById('grouped-return-class-name').textContent = className;
+    document.getElementById('grouped-return-loan-date').textContent = loanDate;
+    
+    // Build books list with checkboxes and quantity inputs
+    const booksList = document.getElementById('grouped-return-books-list');
+    booksList.innerHTML = '';
+    
+    groupedLoans.forEach(loan => {
+        const book = books.find(b => b.id === loan.book_id);
+        const bookTitle = book ? book.title : 'សៀវភៅត្រូវបានលុប';
+        const loanedQty = loan.loaned_quantity || 0;
+        const returnedQty = loan.returned_count || 0;
+        const maxReturn = loanedQty - returnedQty;
+        const displayTitle = `${bookTitle} (${loanedQty}) (${returnedQty})`;
+        
+        if (maxReturn > 0) {
+            const bookItem = document.createElement('div');
+            bookItem.className = 'flex items-center justify-between p-3 border rounded-md bg-white';
+            bookItem.innerHTML = `
+                <div class="flex items-center">
+                    <input type="checkbox" id="book-${loan.id}" class="mr-3 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded">
+                    <label for="book-${loan.id}" class="flex-grow">
+                        <div class="font-medium text-gray-900">${displayTitle}</div>
+                        <div class="text-sm text-gray-500">
+                            នៅសល់ដែលអាចសង: ${maxReturn}
+                        </div>
+                    </label>
+                </div>
+                <div class="ml-4">
+                    <label for="return-qty-${loan.id}" class="block text-xs text-gray-600 mb-1">ចំនួនសង</label>
+                    <input type="number" id="return-qty-${loan.id}" data-loan-id="${loan.id}" 
+                           class="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm" 
+                           min="1" max="${maxReturn}" value="${maxReturn}" disabled>
+                </div>
+            `;
+            booksList.appendChild(bookItem);
+            
+            // Enable/disable quantity input based on checkbox
+            const checkbox = bookItem.querySelector(`#book-${loan.id}`);
+            const quantityInput = bookItem.querySelector(`#return-qty-${loan.id}`);
+            
+            checkbox.addEventListener('change', () => {
+                quantityInput.disabled = !checkbox.checked;
+                if (checkbox.checked) {
+                    // Default to the remaining borrowed count, but allow edits
+                    quantityInput.value = String(maxReturn);
+                    quantityInput.focus();
+                }
+            });
+        }
+    });
+    
+    document.getElementById('grouped-class-return-modal').classList.remove('hidden');
+};
+
+window.closeGroupedClassReturnModal = () => {
+    document.getElementById('grouped-class-return-modal').classList.add('hidden');
+};
+
+// Handle grouped return form submission
+document.getElementById('grouped-class-return-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentUserId) return;
+    
+    // Collect selected books and quantities
+    const selectedReturns = [];
+    const checkboxes = document.querySelectorAll('#grouped-return-books-list input[type="checkbox"]:checked');
+    
+    if (checkboxes.length === 0) {
+        alert('សូមជ្រើសរើសសៀវភៅយ៉ាងហោចណាស់មួយក្បាលដើម្បីសង។');
+        return;
+    }
+    
+    checkboxes.forEach(checkbox => {
+        const loanId = checkbox.id.replace('book-', '');
+        const quantityInput = document.getElementById(`return-qty-${loanId}`);
+        const quantity = parseInt(quantityInput.value, 10);
+        
+        if (quantity > 0) {
+            selectedReturns.push({ loanId, quantity });
+        }
+    });
+    
+    if (selectedReturns.length === 0) {
+        alert('សូមបញ្ចូលចំនួនសងសម្រាប់សៀវភៅដែលបានជ្រើសរើស។');
+        return;
+    }
+    
+    loadingOverlay.classList.remove('hidden');
+    
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Process each selected return
+        for (const returnItem of selectedReturns) {
+            const classLoan = classLoans.find(cl => cl.id === returnItem.loanId);
+            if (!classLoan) continue;
+            
+            const numberToReturn = returnItem.quantity;
+            const maxReturn = (classLoan.loaned_quantity || 0) - (classLoan.returned_count || 0);
+            
+            if (numberToReturn > maxReturn) {
+                alert(`ចំនួនសងសម្រាប់សៀវភៅ "${books.find(b => b.id === classLoan.book_id)?.title || 'N/A'}" លើសពីចំនួនដែលអាចសងបាន។`);
+                continue;
+            }
+            
+            // Get loans to update for this class loan
+            const { data: loansToUpdate, error: queryError } = await supabase
+                .from('loans')
+                .select('id')
+                .eq('class_loan_id', returnItem.loanId)
+                .eq('status', 'ខ្ចី')
+                .eq('user_id', currentUserId)
+                .limit(numberToReturn);
+            
+            if (queryError) throw queryError;
+            
+            // Update individual loans
+            if (loansToUpdate.length > 0) {
+                const loanIds = loansToUpdate.map(loan => loan.id);
+                const { error: updateLoansError } = await supabase
+                    .from('loans')
+                    .update({ status: 'សង', return_date: today })
+                    .in('id', loanIds);
+                
+                if (updateLoansError) throw updateLoansError;
+            }
+            
+            // Update class loan
+            const newReturnedCount = (classLoan.returned_count || 0) + numberToReturn;
+            const newStatus = newReturnedCount >= classLoan.loaned_quantity ? 'សងហើយ' : 'សងខ្លះ';
+            
+            const { error: updateClassLoanError } = await supabase
+                .from('class_loans')
+                .update({ returned_count: newReturnedCount, status: newStatus })
+                .eq('id', returnItem.loanId)
+                .eq('user_id', currentUserId);
+            
+            if (updateClassLoanError) throw updateClassLoanError;
+        }
+        
+        // Reload data and close modal
+        await loadLoans(currentUserId);
+        await loadClassLoans(currentUserId);
+        renderAll();
+        closeGroupedClassReturnModal();
+        
+    } catch (err) {
+        console.error("Error processing grouped return: ", err);
+        alert("មានបញ្ហាក្នុងការរក្សាទុកការសង។");
+    } finally {
+        loadingOverlay.classList.add('hidden');
+    }
+});
+
+// Grouped Class Loan Delete Function
+window.deleteGroupedClassLoan = async (groupKey) => {
+    if (!currentUserId) return;
+    
+    const [className, loanDate] = groupKey.split('|');
+    
+    // Find all class loans for this group
+    const groupedLoans = classLoans.filter(loan => 
+        loan.class_name === className && loan.loan_date === loanDate
+    );
+    
+    if (groupedLoans.length === 0) return;
+    
+    // Get book titles for confirmation message
+    const bookTitles = groupedLoans.map(loan => {
+        const book = books.find(b => b.id === loan.book_id);
+        return book ? book.title : 'សៀវភៅត្រូវបានលុប';
+    });
+    
+    const confirmMessage = `តើអ្នកពិតជាចង់លុបការខ្ចីតាមថ្នាក់ "${className}" កាលបរិច្ឆេទ ${loanDate} មែនទេ?\n\nសៀវភៅដែលនឹងត្រូវលុប:\n${bookTitles.join('\n')}\n\nការធ្វើបែបនេះនឹងលុបកំណត់ត្រាខ្ចីរបស់សិស្សទាំងអស់ដែលពាក់ព័ន្ធនឹងការខ្ចីនេះ។`;
+    
+    if (confirm(confirmMessage)) {
+        loadingOverlay.classList.remove('hidden');
+        try {
+            // Delete all individual loans for each class loan in the group
+            for (const classLoan of groupedLoans) {
+                const { error: deleteLoansError } = await supabase
+                    .from('loans')
+                    .delete()
+                    .eq('class_loan_id', classLoan.id)
+                    .eq('user_id', currentUserId);
+                
+                if (deleteLoansError) throw deleteLoansError;
+                
+                // Delete the class loan record
+                const { error: deleteClassLoanError } = await supabase
+                    .from('class_loans')
+                    .delete()
+                    .eq('id', classLoan.id)
+                    .eq('user_id', currentUserId);
+                
+                if (deleteClassLoanError) throw deleteClassLoanError;
+            }
+            
+            // Refresh data and re-render after successful deletion
+            await loadClassLoans(currentUserId);
+            await loadLoans(currentUserId);
+            renderAll();
+            
+        } catch (e) {
+            console.error("Error deleting grouped class loans: ", e);
+            alert("ការលុបបានបរាជ័យ។");
+        } finally {
+            loadingOverlay.classList.add('hidden');
+        }
+    }
+};
 
 window.openClassLoanEditModal = (id) => {
     const classLoan = classLoans.find(cl => cl.id === id);
@@ -1920,6 +2954,12 @@ window.deleteClassLoan = async (id) => {
                 .eq('user_id', currentUserId);
             
             if (deleteClassLoanError) throw deleteClassLoanError;
+            
+            // Refresh data and re-render after successful deletion
+            await loadClassLoans(currentUserId);
+            await loadLoans(currentUserId);
+            renderAll();
+            
         } catch (e) { console.error("Error deleting class loan and associated loans: ", e); alert("ការលុបបានបរាជ័យ។");
         } finally { loadingOverlay.classList.add('hidden'); }
     }
@@ -2218,11 +3258,17 @@ document.getElementById('reading-log-student-id').addEventListener('input', () =
     } else { studentError.textContent = 'រកមិនឃើញអត្តលេខសិស្សនេះទេ។'; }
 });
 
-document.getElementById('reading-log-isbn-input').addEventListener('input', () => {
+document.getElementById('reading-log-isbn-input').addEventListener('input', (e) => {
+    // Convert Khmer numbers to English numbers
+    const convertedValue = convertKhmerToEnglishNumbers(e.target.value);
+    if (convertedValue !== e.target.value) {
+        e.target.value = convertedValue;
+    }
+    
     clearTimeout(isbnScanTimer);
     isbnScanTimer = setTimeout(() => {
         const isbnInput = document.getElementById('reading-log-isbn-input');
-        const isbn = isbnInput.value.trim();
+        const isbn = convertedValue.trim();
         if (!isbn) return;
         const foundBook = books.find(b => b.isbn && b.isbn.toLowerCase() === isbn.toLowerCase());
         if (foundBook) {
@@ -2335,12 +3381,28 @@ const exportData = () => {
             });
             break;
         case 'reading-logs':
-            dataToExport = readingLogs.map(log => ({
-                'កាលបរិច្ឆេទ': new Date(log.date_time).toLocaleString('en-GB'),
-                'ឈ្មោះសិស្ស': log.student_name,
-                'ភេទ': log.student_gender,
-                'សៀវភៅបានអាន': log.books.map(b => b.title).join('; ')
-            }));
+            dataToExport = readingLogs.map(log => {
+                // Handle books field - it might be a string (JSON) or already an array
+                let booksArray = [];
+                if (log.books) {
+                    if (typeof log.books === 'string') {
+                        try {
+                            booksArray = JSON.parse(log.books);
+                        } catch (e) {
+                            booksArray = [];
+                        }
+                    } else if (Array.isArray(log.books)) {
+                        booksArray = log.books;
+                    }
+                }
+                
+                return {
+                    'កាលបរិច្ឆេទ': new Date(log.date_time).toLocaleString('en-GB'),
+                    'ឈ្មោះសិស្ស': log.student_name,
+                    'ភេទ': log.student_gender,
+                    'សៀវភៅបានអាន': booksArray.map(b => b.title || b).join('; ')
+                };
+            });
             break;
         case 'locations':
             dataToExport = locations.map(loc => ({
@@ -2735,7 +3797,53 @@ document.getElementById('reading-log-reset-btn').addEventListener('click', () =>
 });
 
 // --- PRINTING ---
+// Helper: format current date in Khmer
+const formatKhmerDate = (dateObj = new Date()) => {
+    const khMonths = ['មករា','កុម្ភះ','មិនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'];
+    const d = dateObj.getDate();
+    const m = khMonths[dateObj.getMonth()];
+    const y = dateObj.getFullYear();
+    return `ថ្ងៃទី ${d} ខែ ${m} ឆ្នាំ ${y}`;
+};
+
+// Helper: create footer element with Khmer text
+const createKhmerFooter = () => {
+    const el = document.createElement('div');
+    el.className = 'print-footer print-only';
+
+    const left = document.createElement('div');
+    const school = (settingsData && (settingsData.schoolName || settingsData.school_name)) || '';
+    left.textContent = `ធ្វើនៅ ${school}, ${formatKhmerDate(new Date())}`;
+
+    const right = document.createElement('div');
+    right.className = 'print-footer-right';
+    right.textContent = 'បណ្ណារក្ស';
+
+    el.appendChild(left);
+    el.appendChild(right);
+    return el;
+};
+
+// Helper: map page id to its print area id
+const getPrintAreaForPageId = (pageId) => {
+    const map = {
+        'page-books': 'books-print-area',
+        'page-loans': 'loans-print-area',
+        'page-class-loans': 'class-loans-print-area',
+        'page-reading-log': 'reading-log-print-area',
+        'page-locations': 'locations-print-area',
+        'page-students': 'students-print-area',
+    };
+    const id = map[pageId];
+    return id ? document.getElementById(id) : null;
+};
+
 const prepareAndPrint = (printClass) => {
+    // Ensure school name is shown in header
+    const schoolNameSpan = document.getElementById('print-school-name');
+    if (schoolNameSpan) {
+        schoolNameSpan.textContent = (settingsData && (settingsData.schoolName || settingsData.school_name)) || '';
+    }
     document.body.classList.add(printClass);
     window.print();
 };
@@ -2790,6 +3898,17 @@ window.printReport = () => {
                 break;
         }
         titleSpan.textContent = title;
+
+        // Inject Khmer footer into the correct print area
+        try {
+            // Remove any previous dynamic footers to avoid duplicates
+            document.querySelectorAll('.print-footer').forEach(el => el.remove());
+            const area = getPrintAreaForPageId(pageId);
+            if (area) {
+                area.appendChild(createKhmerFooter());
+            }
+        } catch (e) { console.warn('Footer injection failed:', e); }
+
         prepareAndPrint(`printing-${pageId}`);
     }
 };
@@ -2811,6 +3930,8 @@ window.onafterprint = () => {
         c => c.startsWith('printing-')
     );
     document.body.classList.remove(...printClasses);
+    // Remove dynamically injected footers
+    document.querySelectorAll('.print-footer').forEach(el => el.remove());
 };
 
 // Navigation function for student cards page - Universal compatibility
@@ -2844,20 +3965,48 @@ document.getElementById('print-class-loan-list-btn').addEventListener('click', (
     }
 
     const studentsInClass = students.filter(s => s[classKey] === selectedClass);
-    const classLoansForClass = loans.filter(l => l.borrower.includes(selectedClass));
+    // Use linked individual loan rows belonging to class loans for this class
+    const classLoansForClass = classLoans.filter(l => l.class_name === selectedClass);
+    const relevantClassLoanIds = new Set(classLoansForClass.map(l => String(l.id)));
+    const linkedStudentLoans = loans.filter(l => l.class_loan_id && relevantClassLoanIds.has(String(l.class_loan_id)) && l.status === 'ខ្ចី');
     
-    // Group loans by student
-    const studentLoanMap = new Map();
-    classLoansForClass.forEach(loan => {
-        const studentName = loan.borrower.split(' - ')[0];
-        if (!studentLoanMap.has(studentName)) {
-            studentLoanMap.set(studentName, []);
-        }
-        studentLoanMap.get(studentName).push(books.find(b => b.id === loan.book_id)?.title || 'N/A');
-    });
+    // Helper to normalize names (trim, collapse spaces, lowercase)
+    const normalizeName = (s) => (s || '').toString().replace(/\s+/g, ' ').trim().toLowerCase();
 
-    // Get all unique book titles
-    const allBookTitles = [...new Set(classLoansForClass.map(l => books.find(b => b.id === l.book_id)?.title).filter(Boolean))].sort();
+    // Build student -> title -> count map, with fallback to class loan quantities
+    const studentLoanMap = new Map(); // Map<normalized student name, Map<title, count>>
+    const bookTitleSet = new Set();
+    if (linkedStudentLoans.length > 0) {
+        linkedStudentLoans.forEach(loan => {
+            const borrowerStr = (loan.borrower || '').trim();
+            const studentNameRaw = borrowerStr ? borrowerStr.split(' - ')[0].trim() : '';
+            const studentName = normalizeName(studentNameRaw);
+            const bookTitle = books.find(b => b.id === loan.book_id)?.title || 'N/A';
+            if (!studentName || !bookTitle) return;
+            bookTitleSet.add(bookTitle);
+            if (!studentLoanMap.has(studentName)) studentLoanMap.set(studentName, new Map());
+            const titleMap = studentLoanMap.get(studentName);
+            titleMap.set(bookTitle, (titleMap.get(bookTitle) || 0) + 1);
+        });
+    } else {
+        // Fallback: compute from classLoans outstanding quantities
+        classLoansForClass.forEach(loan => {
+            const borrowerStr = (loan.borrower || '').trim();
+            const studentNameRaw = borrowerStr ? borrowerStr.split(' - ')[0].trim() : '';
+            const studentName = normalizeName(studentNameRaw);
+            const bookTitle = books.find(b => b.id === loan.book_id)?.title || 'N/A';
+            const loanedQty = Number(loan.loaned_quantity || 1);
+            const returnedQty = Number(loan.returned_count || 0);
+            const outstanding = Math.max(0, loanedQty - returnedQty);
+            if (!studentName || !bookTitle || outstanding === 0) return;
+            bookTitleSet.add(bookTitle);
+            if (!studentLoanMap.has(studentName)) studentLoanMap.set(studentName, new Map());
+            const titleMap = studentLoanMap.get(studentName);
+            titleMap.set(bookTitle, (titleMap.get(bookTitle) || 0) + outstanding);
+        });
+    }
+
+    const allBookTitles = [...bookTitleSet].sort();
 
     // Build the table dynamically
     const tableContainer = document.getElementById('class-loan-students-table-container');
@@ -2891,8 +4040,12 @@ document.getElementById('print-class-loan-list-btn').addEventListener('click', (
         if (student[genderKey] === 'ប្រុស') totalMales++;
         if (student[genderKey] === 'ស្រី') totalFemales++;
         
-        const studentFullName = `${student[lastNameKey] || ''} ${student[firstNameKey] || ''}`.trim();
-        const loanedBooks = studentLoanMap.get(studentFullName) || [];
+        const last = (student[lastNameKey] || '').toString();
+        const first = (student[firstNameKey] || '').toString();
+        const studentFullName = `${last} ${first}`.trim();
+        const keyLF = normalizeName(`${last} ${first}`);
+        const keyFL = normalizeName(`${first} ${last}`);
+        const studentTitleMap = studentLoanMap.get(keyLF) || studentLoanMap.get(keyFL) || new Map();
         
         const row = document.createElement('tr');
         row.className = 'border-b';
@@ -2914,7 +4067,7 @@ document.getElementById('print-class-loan-list-btn').addEventListener('click', (
 
         let studentBookCount = 0;
         allBookTitles.forEach(bookTitle => {
-            const count = loanedBooks.filter(title => title === bookTitle).length;
+            const count = studentTitleMap.get(bookTitle) || 0;
             const cell = document.createElement('td');
             cell.className = 'p-3 text-center';
             cell.textContent = count > 0 ? count : '';
@@ -2984,29 +4137,6 @@ document.getElementById('print-class-loan-list-btn').addEventListener('click', (
     summaryDiv.appendChild(line1);
     summaryDiv.appendChild(line2);
     bookRows.forEach(row => summaryDiv.appendChild(row));
-    
-    // QR code after book summary
-    const qrDiv = document.createElement('div');
-    qrDiv.className = 'text-center mt-4';
-    const reportUrl = `${window.location.origin}${window.location.pathname}?class=${selectedClass}&report=loan`;
-    const qrId = `qr-code-container-${Date.now()}`;
-    qrDiv.innerHTML = `<div id="${qrId}" class="inline-block"></div>`;
-    
-    // Generate QR code
-    setTimeout(() => {
-        const qrContainer = document.getElementById(qrId);
-        if (qrContainer && window.QRCode) {
-            new QRCode(qrContainer, {
-                text: reportUrl,
-                width: 80,
-                height: 80,
-                colorDark: "#000000",
-                colorLight: "#ffffff"
-            });
-        }
-    }, 100);
-    
-    summaryDiv.appendChild(qrDiv);
     tableContainer.appendChild(summaryDiv);
 
     // Set up the print title and subtitle
@@ -3018,6 +4148,7 @@ document.getElementById('print-class-loan-list-btn').addEventListener('click', (
 
     // Add delay to ensure DOM is fully rendered before printing
     setTimeout(() => {
+        // Do not inject standardized footer for this specific print
         prepareAndPrint('printing-page-class-loan-list');
     }, 500);
 
@@ -3048,3 +4179,166 @@ document.getElementById('student-class-filter').addEventListener('change', rende
 
 // --- EXCEL EXPORT EVENT LISTENER ---
 document.getElementById('export-excel-btn').addEventListener('click', exportData);
+
+// --- BOOK DROPDOWN POPULATION ---
+const populateBookDropdowns = () => {
+    const loanBookSelect = document.getElementById('loan-book-select');
+    const classLoanBookSelect = document.getElementById('class-loan-book-select');
+    
+    // Clear existing options except the first one
+    loanBookSelect.innerHTML = '<option value="">-- ជ្រើសរើសសៀវភៅ --</option>';
+    classLoanBookSelect.innerHTML = '<option value="">-- ជ្រើសរើសសៀវភៅ --</option>';
+    
+    // Sort books by title
+    const sortedBooks = [...books].sort((a, b) => a.title.localeCompare(b.title));
+    
+    sortedBooks.forEach(book => {
+        // Only show books that have available copies
+        const loanedCount = loans.filter(loan => loan.book_id === book.id && loan.status === 'ខ្ចី').length;
+        const remaining = (book.quantity || 0) - loanedCount;
+        
+        if (remaining > 0) {
+            const displayText = `${book.title}${book.author ? ` - ${book.author}` : ''} (នៅសល់: ${remaining})`;
+            
+            // Add to individual loan dropdown
+            const loanOption = document.createElement('option');
+            loanOption.value = book.id;
+            loanOption.textContent = displayText;
+            loanBookSelect.appendChild(loanOption);
+            
+            // Add to class loan dropdown
+            const classLoanOption = document.createElement('option');
+            classLoanOption.value = book.id;
+            classLoanOption.textContent = displayText;
+            classLoanBookSelect.appendChild(classLoanOption);
+        }
+    });
+};
+
+// --- SELECTED BOOKS MANAGEMENT ---
+const renderSelectedLoanBooks = () => {
+    const container = document.getElementById('loan-selected-books-list');
+    const noMessage = document.getElementById('loan-no-books-message');
+    
+    if (selectedLoanBooks.length === 0) {
+        noMessage.style.display = 'block';
+        // Hide all book items
+        container.querySelectorAll('.selected-book-item').forEach(item => item.remove());
+    } else {
+        noMessage.style.display = 'none';
+        // Clear existing items
+        container.querySelectorAll('.selected-book-item').forEach(item => item.remove());
+        
+        selectedLoanBooks.forEach((book, index) => {
+            const bookItem = document.createElement('div');
+            bookItem.className = 'selected-book-item flex items-center justify-between bg-white p-2 rounded border mb-2';
+            bookItem.innerHTML = `
+                <div class="flex-1">
+                    <span class="font-medium">${book.title}</span>
+                    ${book.author ? `<span class="text-gray-600"> - ${book.author}</span>` : ''}
+                    <span class="text-sm text-blue-600 ml-2">(នៅសល់: ${book.remaining})</span>
+                </div>
+                <button type="button" onclick="removeSelectedLoanBook(${index})" class="text-red-500 hover:text-red-700 ml-2">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            container.appendChild(bookItem);
+        });
+    }
+};
+
+const addSelectedLoanBook = (bookId) => {
+    const book = books.find(b => String(b.id) === String(bookId));
+    if (!book) return false;
+    
+    // Check if book is already selected
+    if (selectedLoanBooks.find(b => String(b.id) === String(bookId))) {
+        alert('សៀវភៅនេះត្រូវបានជ្រើសរើសរួចហើយ។');
+        return false;
+    }
+    
+    // Calculate remaining quantity
+    const loanedCount = loans.filter(loan => String(loan.book_id) === String(book.id) && loan.status === 'ខ្ចី').length;
+    const remaining = (book.quantity || 0) - loanedCount;
+    
+    if (remaining <= 0) {
+        alert('សៀវភៅនេះអស់ស្តុកហើយ។');
+        return false;
+    }
+    
+    selectedLoanBooks.push({
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        isbn: book.isbn,
+        remaining: remaining
+    });
+    
+    renderSelectedLoanBooks();
+    return true;
+};
+
+window.removeSelectedLoanBook = (index) => {
+    selectedLoanBooks.splice(index, 1);
+    renderSelectedLoanBooks();
+};
+
+const clearSelectedLoanBooks = () => {
+    selectedLoanBooks = [];
+    renderSelectedLoanBooks();
+};
+
+// --- BOOK DROPDOWN EVENT HANDLERS ---
+document.getElementById('loan-book-select').addEventListener('change', function() {
+    const selectedBookId = this.value;
+    if (selectedBookId) {
+        if (addSelectedLoanBook(selectedBookId)) {
+            // Reset dropdown after successful addition
+            this.value = '';
+            // Focus back to scan textbox for rapid entry
+            setTimeout(() => {
+                const isbnInput = document.getElementById('loan-isbn-input');
+                if (isbnInput) isbnInput.focus();
+            }, 50);
+        }
+    }
+});
+
+document.getElementById('class-loan-book-select').addEventListener('change', function() {
+    const selectedBookId = this.value;
+    if (selectedBookId) {
+        const selectedBook = books.find(book => String(book.id) === String(selectedBookId));
+        if (selectedBook) {
+            const classLoanBookError = document.getElementById('class-loan-book-error');
+            classLoanBookError.textContent = '';
+
+            // Prevent duplicate
+            if (currentClassLoanScannedBooks.some(b => String(b.id) === String(selectedBook.id))) {
+                classLoanBookError.textContent = 'សៀវភៅនេះបានស្កេនរួចហើយ';
+            } else {
+                // Compute remaining
+                const loanedCount = loans.filter(loan => String(loan.book_id) === String(selectedBook.id) && loan.status === 'ខ្ចី').length;
+                const remaining = (selectedBook.quantity || 0) - loanedCount;
+
+                // Add to scanned list and render with remove buttons
+                currentClassLoanScannedBooks.push({ id: selectedBook.id, title: selectedBook.title, remaining });
+                renderClassLoanScannedBooks();
+
+                // Indicate added
+                document.getElementById('class-loan-book-title-display').value = `${selectedBook.title} (បានបន្ថែម)`;
+            }
+
+            // Reset dropdown and focus back to scan
+            this.value = '';
+            setTimeout(() => {
+                const input = document.getElementById('class-loan-isbn-input');
+                if (input) input.focus();
+            }, 50);
+        }
+    } else {
+        // Clear fields when no book is selected
+        document.getElementById('class-loan-isbn-input').value = '';
+        document.getElementById('class-loan-book-title-display').value = '';
+        document.getElementById('class-loan-book-id').value = '';
+    }
+});

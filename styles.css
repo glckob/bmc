@@ -6,6 +6,10 @@ h1, h2, h3, .font-koulen {
     font-family: 'Koulen', cursive;
 }
 
+.print-only {
+    display: none;
+}
+
 .print-area {
     display: none;
 }
@@ -196,6 +200,9 @@ select:focus {
         print-color-adjust: exact;
     }
 
+    /* Show print-only helpers */
+    .print-only { display: block !important; }
+
     /* --- Hide ALL non-printable elements FORCEFULLY --- */
     #auth-container,
     #sidebar,
@@ -353,12 +360,9 @@ select:focus {
             color: black !important;
         }
 
-        /* Footer styling */
+        /* Footer styling (keep minimal; global style will right-align) */
         .print-footer {
-            margin-top: 40px;
-            display: flex;
-            justify-content: space-between;
-            page-break-before: always;
+            margin-top: 24px;
         }
     }
 
@@ -539,3 +543,20 @@ select:focus {
     /* --- END: FINAL FIX FOR STUDENT CARD PRINTING --- */
 }
 /* ========== END: REVISED PRINT STYLES ========== */
+
+/* Global footer style for all print pages */
+@media print {
+  .print-footer {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* Move content to the right */
+    text-align: right;
+    gap: 6px;
+    font-size: 11pt;
+  }
+  /* Offset the librarian label about 3 tab-stops from the right */
+  .print-footer-right {
+    margin-right: 10ch; /* approx 1 tab (8ch) */
+  }
+}

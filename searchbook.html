@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ស្វែងរកសៀវភៅ</title>
+  <!-- Icons (optional) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <!-- Khmer-friendly fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --text: #111827;
+      --primary: #0ea5e9;
+      --ring: rgba(14,165,233,.35);
+      --border: #e5e7eb;
+      --table-head: #eef2f7;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      font-family: "Noto Sans Khmer", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Khmer OS", "Khmer OS Siemreap", sans-serif;
+      color: var(--text);
+    }
+    .container {
+      max-width: 1080px; margin: 32px auto; padding: 0 16px;
+    }
+    .topbar {
+      position: sticky; top: 0; z-index: 10; background: transparent; padding-top: 8px;
+    }
+    .logout-btn {
+      position: fixed; top: 12px; right: 16px; z-index: 50;
+      background: white; border: 1px solid var(--border); color: #b91c1c;
+      padding: 8px 14px; border-radius: 9999px; font-weight: 600; cursor: pointer;
+      transition: box-shadow .2s, transform .05s;
+    }
+    .logout-btn:hover { box-shadow: 0 4px 20px rgba(0,0,0,.06); }
+    .logout-btn:active { transform: translateY(1px); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.06);
+      padding: 20px;
+    }
+
+    .center { text-align: center; }
+
+    .header-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr; /* left spacer | centered title | right button */
+      align-items: center;
+      column-gap: 12px;
+    }
+    .header-row .main-title { grid-column: 2; justify-self: center; }
+    .header-row .logout-btn { grid-column: 3; justify-self: end; float: none; }
+
+    .header h1 {
+      margin: 10px 0 0; font-size: 28px; font-weight: 800; letter-spacing: .5px;
+    }
+    .header h2 {
+      margin: 4px 0 12px; font-size: 22px; font-weight: 700;
+    }
+    .main-title {
+      font-family: "Khmer OS Muol Light", "Noto Sans Khmer", sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      margin: 4px 0 6px;
+      letter-spacing: .3px;
+    }
+    .sponsor {
+      margin: 6px 0 6px;
+      font-size: 16px;
+      color: var(--muted);
+    }
+
+    .header img {
+      width: 360px; height: auto; margin: 6px auto 10px; display: block;
+    }
+    .subtitle {
+      color: var(--muted); margin-top: 4px; margin-bottom: 16px; font-size: 16px;
+    }
+
+    .search-wrap {
+      display: flex; justify-content: center; margin: 18px 0 10px;
+    }
+    .search-input {
+      width: 680px; max-width: 100%;
+      background: white;
+      border: 1px solid var(--border); border-radius: 9999px;
+      padding: 12px 18px; font-size: 15px; outline: none; caret-color: var(--primary);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.02);
+    }
+    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+    .placeholder { color: #9ca3af; }
+
+    .table-card { margin-top: 12px; padding: 0; }
+    .table-scroll { overflow: auto; border-radius: 12px; }
+    table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 860px; }
+    thead th {
+      background: var(--table-head);
+      padding: 12px 10px; text-align: left; font-weight: 700; font-size: 14px; color: #374151;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      padding: 11px 10px; border-bottom: 1px solid var(--border); font-size: 14px;
+    }
+    tbody tr:hover { background: #fafafa; }
+
+    .footer {
+      text-align: center; color: var(--muted); margin-top: 14px; font-size: 14px;
+    }
+
+    /* Details drawer */
+    .drawer-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35);
+      display: none;
+    }
+    .drawer {
+      position: fixed; top: 0; right: 0; height: 100%; width: 420px; max-width: 92vw;
+      background: #fff; border-left: 1px solid var(--border);
+      box-shadow: -8px 0 30px rgba(0,0,0,.08);
+      transform: translateX(100%);
+      transition: transform .25s ease;
+      display: flex; flex-direction: column;
+      z-index: 60;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+    }
+    .drawer-title { font-weight: 800; font-size: 18px; }
+    .drawer-close { border: none; background: transparent; font-size: 20px; cursor: pointer; padding: 6px 10px; }
+    .drawer-content { padding: 14px 16px; overflow: auto; }
+    .detail-field { margin-bottom: 10px; font-size: 14px; }
+    .detail-label { color: #6b7280; display: block; margin-bottom: 4px; }
+    .detail-value { font-weight: 700; }
+    .cover {
+      width: 100%; max-width: 320px; height: auto; max-height: 240px;
+      display: block; margin: 0 auto 12px auto;
+      object-fit: contain; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px;
+    }
+
+    /* Login styles */
+    .full-center {
+      min-height: 100vh; display: grid; place-items: center; padding: 20px;
+    }
+    .login-card {
+      width: 100%; max-width: 420px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 22px;
+      box-shadow: 0 12px 34px rgba(0,0,0,.08);
+    }
+    .login-title { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+    .login-sub { text-align: center; color: var(--muted); margin-bottom: 16px; font-size: 14px; }
+    .form-group { margin-bottom: 12px; }
+    .label { display: block; font-size: 14px; margin-bottom: 6px; font-weight: 600; }
+    .input {
+      width: 100%; border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; font-size: 14px; outline: none; background: #fff;
+    }
+    .input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--ring); }
+    .btn {
+      width: 100%; border: none; border-radius: 10px; padding: 12px 14px;
+      background: var(--primary); color: white; font-weight: 700; font-size: 15px; cursor: pointer;
+      transition: box-shadow .2s, transform .05s;
+    }
+    .btn:hover { box-shadow: 0 8px 28px rgba(14,165,233,.35); }
+    .btn:active { transform: translateY(1px); }
+    .error { color: #b91c1c; margin-top: 8px; min-height: 20px; font-size: 13px; }
+    .hide { display: none !important; }
+    .badge {
+      display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px; margin-left: 6px;
+    }
+    .badge-yellow { background: #fef3c7; color: #92400e; }
+    .badge-blue { background: #dbeafe; color: #1e3a8a; }
+  </style>
+</head>
+<body>
+  <!-- LOGIN VIEW -->
+  <div id="auth-view" class="full-center">
+    <div class="login-card">
+      <div class="login-title">ចូលប្រើប្រព័ន្ធ</div>
+      <div class="login-sub">សូមបញ្ចូលអ៊ីមែល និងពាក្យសម្ងាត់</div>
+      <form id="login-form">
+        <div class="form-group">
+          <label class="label" for="login-email">អ៊ីមែល</label>
+          <input id="login-email" type="email" class="input" placeholder="name@example.com" required/>
+        </div>
+        <div class="form-group">
+          <label class="label" for="login-password">ពាក្យសម្ងាត់</label>
+          <input id="login-password" type="password" class="input" placeholder="********" required/>
+        </div>
+        <button type="submit" class="btn"><i class="fa-solid fa-right-to-bracket"></i> ចូល</button>
+        <div id="login-error" class="error"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP VIEW -->
+  <div id="app-view" class="hide">
+
+    <div class="container">
+      <div class="header center">
+        <div class="header-row">
+          <div class="main-title">បណ្ណាល័យខ្ញុំ</div>
+          <button id="logout-btn" class="logout-btn"><i class="fa-solid fa-arrow-right-from-bracket"></i> ចាកចេញ</button>
+        </div>
+        <h1 id="school-line1">សាលាអប់រំ</h1>
+        <h2 id="school-line2">បណ្ណាល័យសាលា</h2>
+        <div class="sponsor">ឧបត្ថម្ភការផលិតដោយ៖ អង្គការហ្គូដណេប៊ឺសកម្ពុជា</div>
+        <img src="gnclogo.png" alt="Good Neighbors Cambodia">
+        <div class="subtitle">
+          សូមស្វែងរកសៀវភៅដោយ បញ្ចូលចំណងជើង ឈ្មោះអ្នកនិពន្ធ ឬ លេខកូដ ISBN ក្នុងប្រអប់ស្វែងរកខាងក្រោម
+        </div>
+      </div>
+      <div class="search-wrap">
+        <input id="search-input" class="search-input" type="text" placeholder="---ស្វែងរកសៀវភៅ---" />
+      </div>
+      <div class="card table-card">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>ល.រ</th>
+                <th>ចំណងជើង</th>
+                <th>អ្នកនិពន្ធ/អ្នកតែង</th>
+                <th>ISBN</th>
+                <th>ចំនួន</th>
+                <th>ចំនួននៅសល់</th>
+                <th>ទីតាំង</th>
+                <th>ប្រភព</th>
+              </tr>
+            </thead>
+            <tbody id="results-body">
+              <tr><td colspan="8" class="center" style="color:#6b7280;padding:16px;">មិនទាន់មានទិន្នន័យ</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="footer">
+        សូមជួយថែរក្សាឧបករណ៍សាលា និងសៀវភៅបណ្ណាល័យ
+        <div style="margin-top:6px;">កម្មវិធីនេះសរសេរដោយ លោកគ្រូ វង្ស សាណូវុទ្ធ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Book details drawer -->
+  <div id="detail-overlay" class="drawer-overlay"></div>
+  <aside id="detail-drawer" class="drawer">
+    <div class="drawer-header">
+      <div id="detail-title" class="drawer-title">សៀវភៅ</div>
+      <button id="detail-close" class="drawer-close" aria-label="Close">×</button>
+    </div>
+    <div class="drawer-content">
+      <img id="detail-cover" class="cover" alt="Book cover" src="" />
+      <div class="detail-field">
+        <span class="detail-label">អ្នកនិពន្ធ</span>
+        <span id="detail-author" class="detail-value">—</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">ISBN</span>
+        <span id="detail-isbn" class="detail-value">—</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">ទីតាំង</span>
+        <span id="detail-location" class="detail-value">—</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">ប្រភព</span>
+        <span id="detail-source" class="detail-value">—</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">ចំនួន និង នៅសល់</span>
+        <span id="detail-qty" class="detail-value">—</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">កំណត់សម្គាល់</span>
+        <span id="detail-notes" class="detail-value">—</span>
+      </div>
+    </div>
+  </aside>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2';
+
+    // Use existing Supabase URL/key
+    const supabaseUrl = 'https://bcbwrymhpjcncgiwjllr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjYndyeW1ocGpjbmNnaXdqbGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDA5MDEsImV4cCI6MjA3MTE3NjkwMX0.ZiU1uF9_5h2N9choQvNihTvKWfqtPlHdvQm2iPaI2jw';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Elements
+    const authView = document.getElementById('auth-view');
+    const appView = document.getElementById('app-view');
+    const loginForm = document.getElementById('login-form');
+    const loginEmail = document.getElementById('login-email');
+    const loginPassword = document.getElementById('login-password');
+    const loginError = document.getElementById('login-error');
+    const logoutBtn = document.getElementById('logout-btn');
+    const searchInput = document.getElementById('search-input');
+    const resultsBody = document.getElementById('results-body');
+    const schoolLine1 = document.getElementById('school-line1');
+    const schoolLine2 = document.getElementById('school-line2');
+    const detailOverlay = document.getElementById('detail-overlay');
+    const detailDrawer = document.getElementById('detail-drawer');
+    const detailClose = document.getElementById('detail-close');
+    const detailTitle = document.getElementById('detail-title');
+    const detailCover = document.getElementById('detail-cover');
+    const detailAuthor = document.getElementById('detail-author');
+    const detailIsbn = document.getElementById('detail-isbn');
+    const detailLocation = document.getElementById('detail-location');
+    const detailSource = document.getElementById('detail-source');
+    const detailQty = document.getElementById('detail-qty');
+    const detailNotes = document.getElementById('detail-notes');
+
+    let currentUserId = null;
+    let data = { books: [], loans: [], class_loans: [], locations: [], settings: {} };
+
+    // Auth wiring
+    supabase.auth.getSession().then(({ data: { session } }) => handleAuth(session));
+    supabase.auth.onAuthStateChange((_event, session) => handleAuth(session));
+
+    function handleAuth(session) {
+      if (session?.user) {
+        currentUserId = session.user.id;
+        authView.classList.add('hide');
+        appView.classList.remove('hide');
+        // Focus search box when app view is shown
+        setTimeout(() => { try { searchInput?.focus(); } catch(_){} }, 0);
+        bootstrap();
+      } else {
+        currentUserId = null;
+        appView.classList.add('hide');
+        authView.classList.remove('hide');
+      }
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginError.textContent = '';
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: loginEmail.value.trim(),
+          password: loginPassword.value
+        });
+        if (error) loginError.textContent = 'ការចូលប្រើបានបរាជ័យ: ' + error.message;
+      } catch (err) {
+        loginError.textContent = 'ការចូលប្រើបានបរាជ័យ: ' + err.message;
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+    });
+
+    // Bootstrap: load datasets and bind search
+    async function bootstrap() {
+      await Promise.all([loadSettings(), loadLocations(), loadBooks(), loadLoans(), loadClassLoans()]);
+      applySettingsHeader();
+      // Ensure search starts empty so table doesn't list everything by default
+      if (searchInput) searchInput.value = '';
+      render();
+      // Realtime (optional; light) — re-render on changes
+      supabase.channel('searchbook-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'books', filter: `user_id=eq.${currentUserId}` }, async () => { await loadBooks(); render(); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'loans', filter: `user_id=eq.${currentUserId}` }, async () => { await loadLoans(); render(); })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'class_loans', filter: `user_id=eq.${currentUserId}` }, async () => { await loadClassLoans(); render(); })
+        .subscribe();
+    }
+
+    function getCoverUrl(book) {
+      // Prefer explicit book_url if provided, then fall back to other known fields
+      return book.book_url || book.cover_url || book.image_url || book.photo_url || book.cover || book.image || '';
+    }
+
+    function openDetails(book) {
+      // Title
+      detailTitle.textContent = book.title || 'សៀវភៅ';
+      // Cover
+      const url = getCoverUrl(book);
+      if (url) {
+        detailCover.src = url;
+        detailCover.style.display = '';
+        detailCover.onerror = () => { detailCover.style.display = 'none'; };
+      } else {
+        detailCover.style.display = 'none';
+      }
+      // Fields
+      detailAuthor.textContent = book.author || '—';
+      detailIsbn.textContent = book.isbn || '—';
+      const loc = data.locations.find(l => l.id === book.location_id);
+      detailLocation.textContent = loc ? (loc.name || 'N/A') : 'N/A';
+      detailSource.textContent = book.source || '—';
+      const individualActive = data.loans.filter(l => l.book_id === book.id && l.status === 'ខ្ចី' && !l.class_loan_id).length;
+      const classActive = (data.class_loans || []).filter(cl => cl.book_id === book.id)
+        .reduce((sum, cl) => sum + Math.max(0, (cl.loaned_quantity || 0) - (cl.returned_count || 0)), 0);
+      const remaining = Math.max(0, (book.quantity || 0) - (individualActive + classActive));
+      detailQty.textContent = `${book.quantity || 0} | នៅសល់ ${remaining}`;
+      detailNotes.textContent = (book.notes || book.description || book.remark || '—');
+
+      // Show drawer
+      detailOverlay.style.display = 'block';
+      detailDrawer.classList.add('open');
+    }
+
+    function closeDetails() {
+      detailOverlay.style.display = 'none';
+      detailDrawer.classList.remove('open');
+    }
+
+    async function loadSettings() {
+      const { data: rows, error } = await supabase
+        .from('settings')
+        .select('*')
+        .eq('user_id', currentUserId);
+      if (!error && Array.isArray(rows)) {
+        const map = {};
+        rows.forEach(r => { map[r.key] = r.value; });
+        data.settings = map;
+      } else {
+        data.settings = {};
+      }
+    }
+    async function loadLocations() {
+      const { data: rows } = await supabase.from('locations').select('*').eq('user_id', currentUserId);
+      data.locations = rows || [];
+    }
+    async function loadBooks() {
+      const { data: rows } = await supabase.from('books').select('*').eq('user_id', currentUserId);
+      data.books = rows || [];
+    }
+    async function loadLoans() {
+      const { data: rows } = await supabase.from('loans').select('*').eq('user_id', currentUserId);
+      data.loans = rows || [];
+    }
+    async function loadClassLoans() {
+      const { data: rows } = await supabase.from('class_loans').select('*').eq('user_id', currentUserId);
+      data.class_loans = rows || [];
+    }
+
+    function applySettingsHeader() {
+      // Support multiple possible keys
+      const singleName = data.settings['school-name'] || data.settings['schoolName'] || data.settings['school_name'] || '';
+      const line1 = singleName || data.settings['school_name_line1'] || data.settings['school_line1'] || 'សាលាអប់រំ';
+      const line2 = singleName ? '' : (data.settings['school_name_line2'] || data.settings['school_line2'] || 'បណ្ណាល័យសាលា');
+      schoolLine1.textContent = line1;
+      schoolLine2.textContent = line2;
+      // Hide line2 if empty
+      schoolLine2.style.display = line2 ? '' : 'none';
+    }
+
+    // Search
+    let debounceTimer = null;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(render, 180);
+    });
+
+    function render() {
+      const raw = (searchInput?.value ?? '');
+      const q = raw.toLowerCase().trim();
+      const minChars = 1; // require at least 1 typed character
+
+      const books = [...(data.books || [])].sort((a,b) => (a.title || '').localeCompare(b.title || ''));
+
+      resultsBody.innerHTML = '';
+      // If there is no data at all
+      if (books.length === 0) {
+        resultsBody.innerHTML = `<tr><td colspan="8" class="center" style="color:#6b7280;padding:16px;">មិនទាន់មានទិន្នន័យ</td></tr>`;
+        return;
+      }
+
+      // If query is empty or below threshold, show prompt/blank state (do not list all books)
+      if (!q || q.length < minChars) {
+        resultsBody.innerHTML = `<tr><td colspan="8" class="center" style="color:#6b7280;padding:16px;">សូមវាយពាក្យស្វែងរកនៅប្រអប់ខាងលើ</td></tr>`;
+        return;
+      }
+
+      const filtered = books.filter(b =>
+        (b.title || '').toLowerCase().includes(q) ||
+        (b.author || '').toLowerCase().includes(q) ||
+        (b.isbn || '').toLowerCase().includes(q)
+      );
+
+      if (filtered.length === 0) {
+        resultsBody.innerHTML = `<tr><td colspan="8" class="center" style="color:#6b7280;padding:16px;">រកមិនឃើញសៀវភៅទេ</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((book, idx) => {
+        const loc = data.locations.find(l => l.id === book.location_id);
+        const individualActive = data.loans.filter(l => l.book_id === book.id && l.status === 'ខ្ចី' && !l.class_loan_id).length;
+        const classActive = (data.class_loans || [])
+          .filter(cl => cl.book_id === book.id)
+          .reduce((sum, cl) => {
+            const rem = (cl.loaned_quantity || 0) - (cl.returned_count || 0);
+            return sum + (rem > 0 ? rem : 0);
+          }, 0);
+        const remaining = Math.max(0, (book.quantity || 0) - (individualActive + classActive));
+
+        const badges = [
+          individualActive > 0 ? `<span class="badge badge-yellow">ខ្ចីបុគ្គល ${individualActive}</span>` : '',
+          classActive > 0 ? `<span class="badge badge-blue">ខ្ចីថ្នាក់ ${classActive}</span>` : ''
+        ].filter(Boolean).join('');
+
+        const tr = document.createElement('tr');
+        tr.dataset.bookId = book.id;
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(book.title || '')} ${badges}</td>
+          <td>${escapeHtml(book.author || '')}</td>
+          <td>${escapeHtml(book.isbn || '')}</td>
+          <td>${book.quantity || 0}</td>
+          <td style="font-weight:700; color:${remaining>0 ? '#065f46' : '#991b1b'}">${remaining}</td>
+          <td>${escapeHtml(loc ? (loc.name || 'N/A') : 'N/A')}</td>
+          <td>${escapeHtml(book.source || '')}</td>
+        `;
+        resultsBody.appendChild(tr);
+      });
+
+      // Row click -> open details
+      resultsBody.onclick = (ev) => {
+        const tr = ev.target.closest('tr');
+        if (!tr) return;
+        const id = tr.dataset.bookId;
+        const book = (data.books || []).find(b => String(b.id) === String(id));
+        if (book) openDetails(book);
+      };
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+  </script>
+  <script>
+    // Close interactions for details drawer
+    (function(){
+      const overlay = document.getElementById('detail-overlay');
+      const drawer = document.getElementById('detail-drawer');
+      const closeBtn = document.getElementById('detail-close');
+      function close(){ overlay.style.display='none'; drawer.classList.remove('open'); }
+      function closeAndRefocus(){ close(); try { document.getElementById('search-input')?.focus(); } catch(_){} }
+      overlay.addEventListener('click', closeAndRefocus);
+      closeBtn.addEventListener('click', closeAndRefocus);
+      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeAndRefocus(); });
+    })();
+  </script>
+</body>
+</html>
