@@ -56,6 +56,30 @@ const setupLoanSortListeners = () => {
             renderLoans();
         });
 
+// Attempt to focus the Books search box when the Books page is visible
+document.addEventListener('DOMContentLoaded', () => {
+    const tryFocusSearchBooks = () => {
+        const input = document.getElementById('search-books');
+        const page = document.getElementById('page-books');
+        if (!input || !page) return false;
+        const pageVisible = !page.classList.contains('hidden');
+        const inputVisible = !!(input.offsetParent);
+        if (pageVisible && inputVisible) {
+            input.focus();
+            return true;
+        }
+        return false;
+    };
+
+    let attempts = 0;
+    const maxAttempts = 40; // ~10 seconds total
+    const intervalId = setInterval(() => {
+        if (tryFocusSearchBooks() || ++attempts >= maxAttempts) {
+            clearInterval(intervalId);
+        }
+    }, 250);
+});
+
 // Grouped Return Modal for Individual Loans
 window.openGroupedReturnModal = (groupKey) => {
     const [borrower, loanDate] = groupKey.split('|');
@@ -134,6 +158,7 @@ document.getElementById('grouped-return-form-ind').addEventListener('submit', as
         }
         await loadLoans(currentUserId);
         renderAll();
+        try { if (typeof window.showToast === 'function') { window.showToast('សងសៀវភៅបានជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
         window.closeGroupedReturnModal();
     } catch (err) {
         console.error('Error processing grouped return (individual): ', err);
@@ -230,6 +255,7 @@ document.getElementById('grouped-return-form-ind').addEventListener('submit', as
                 }
                 await loadLoans(currentUserId);
                 renderAll();
+                try { if (typeof window.showToast === 'function') { window.showToast('សងសៀវភៅបានជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
                 window.closeGroupedReturnModal();
             } catch (err) {
                 console.error('Error processing grouped return (individual): ', err);
@@ -240,10 +266,33 @@ document.getElementById('grouped-return-form-ind').addEventListener('submit', as
         });
     }
 
-    window.deleteGroupedLoan = async (groupKey) => {
-        if (!currentUserId) return;
-        if (!confirm('តើអ្នកពិតជាចង់លុបការខ្ចីនេះទាំងស្រុងមែនទេ?')) return;
+    // Grouped loan delete modal handlers (Individual Loans)
+    window.openGroupedLoanDeleteModal = (groupKey) => {
+        const modal = document.getElementById('grouped-loan-delete-modal');
+        const msg = document.getElementById('grouped-loan-delete-message');
+        const btn = document.getElementById('grouped-loan-delete-confirm-btn');
+        if (!modal || !btn) return;
         const [borrower, loanDate] = groupKey.split('|');
+        const count = loans.filter(l => !l.class_loan_id && (l.borrower || '') === borrower && l.loan_date === loanDate).length;
+        if (msg) {
+            const b = (borrower || '').trim();
+            msg.textContent = `តើអ្នកពិតជាចង់លុបការខ្ចីរបស់ ${b} កាលបរិច្ឆេទ ${loanDate} ចំនួន ${count} កំណត់ត្រា មែនទេ?`;
+        }
+        btn.onclick = async () => { await window.performGroupedLoanDelete(groupKey); window.closeGroupedLoanDeleteModal(); };
+        modal.classList.remove('hidden');
+    };
+
+    window.closeGroupedLoanDeleteModal = () => {
+        const modal = document.getElementById('grouped-loan-delete-modal');
+        const btn = document.getElementById('grouped-loan-delete-confirm-btn');
+        if (btn) btn.onclick = null;
+        if (modal) modal.classList.add('hidden');
+    };
+
+    window.performGroupedLoanDelete = async (groupKey) => {
+        if (!currentUserId) return;
+        const [borrower, loanDate] = groupKey.split('|');
+        const toDeleteCount = loans.filter(l => !l.class_loan_id && (l.borrower || '') === borrower && l.loan_date === loanDate).length;
         try {
             const { error } = await supabase
                 .from('loans')
@@ -255,35 +304,30 @@ document.getElementById('grouped-return-form-ind').addEventListener('submit', as
             if (error) throw error;
             await loadLoans(currentUserId);
             renderAll();
+            try {
+                if (typeof window.showToast === 'function') {
+                    const b = (borrower || '').trim();
+                    window.showToast(`បានលុបការខ្ចីរបស់ ${b} កាលបរិច្ឆេទ ${loanDate} ចំនួន ${toDeleteCount} កំណត់ត្រា ដោយជោគជ័យ!`, 'bg-green-600');
+                }
+            } catch (_) { /* noop */ }
         } catch (e) {
             console.error('Error deleting grouped loans: ', e);
             alert('ការលុបបានបរាជ័យ។');
         }
     };
 
+    window.deleteGroupedLoan = (groupKey) => {
+        if (!currentUserId) return;
+        window.openGroupedLoanDeleteModal(groupKey);
+    };
+
     window.__indGroupedHandlersBound = true;
 })();
 
 // Delete all individual loans in a group
-window.deleteGroupedLoan = async (groupKey) => {
+window.deleteGroupedLoan = (groupKey) => {
     if (!currentUserId) return;
-    if (!confirm('តើអ្នកពិតជាចង់លុបការខ្ចីនេះទាំងស្រុងមែនទេ?')) return;
-    const [borrower, loanDate] = groupKey.split('|');
-    try {
-        const { error } = await supabase
-            .from('loans')
-            .delete()
-            .eq('user_id', currentUserId)
-            .eq('borrower', borrower)
-            .eq('loan_date', loanDate)
-            .is('class_loan_id', null);
-        if (error) throw error;
-        await loadLoans(currentUserId);
-        renderAll();
-    } catch (e) {
-        console.error('Error deleting grouped loans: ', e);
-        alert('ការលុបបានបរាជ័យ។');
-    }
+    window.openGroupedLoanDeleteModal(groupKey);
 };
     };
     bind('loan-sort-serial', 'serial', 'asc');
@@ -452,6 +496,20 @@ const navigateTo = (pageId) => {
     try { localStorage.setItem('lastPage', pageId); } catch (e) { /* ignore */ }
 
     // Auto-focus or setup for specific pages
+    if (pageId === 'books') {
+        // Focus the search box shortly after the page becomes visible
+        setTimeout(() => {
+            const input = document.getElementById('search-books');
+            if (input) { input.focus(); input.select(); }
+        }, 100);
+    }
+    if (pageId === 'locations') {
+        // Focus search on Locations page
+        setTimeout(() => {
+            const input = document.getElementById('search-locations');
+            if (input) { input.focus(); input.select(); }
+        }, 100);
+    }
     if (pageId === 'class-loans') {
         populateClassLoanForm();
         setTimeout(() => document.getElementById('class-loan-isbn-input').focus(), 100);
@@ -463,6 +521,13 @@ const navigateTo = (pageId) => {
     if (pageId === 'reading-log') {
         window.clearReadingLogForm();
         setTimeout(() => document.getElementById('reading-log-student-id').focus(), 100);
+    }
+    if (pageId === 'students') {
+        // Focus search on Students page
+        setTimeout(() => {
+            const input = document.getElementById('search-students');
+            if (input) { input.focus(); input.select(); }
+        }, 100);
     }
 };
 
@@ -476,6 +541,36 @@ navLinks.forEach(link => {
         }
         // If no data-page attribute, let the natural href work (for external links like stcard.html)
     });
+});
+
+// Refocus relevant inputs after printing finishes
+window.addEventListener('afterprint', () => {
+    const activePage = document.querySelector('.page:not(.hidden)');
+    if (!activePage) return;
+    if (activePage.id === 'page-locations') {
+        const input = document.getElementById('search-locations');
+        if (input) { input.focus(); input.select(); }
+    }
+    if (activePage.id === 'page-students') {
+        const input = document.getElementById('search-students');
+        if (input) { input.focus(); input.select(); }
+    }
+    if (activePage.id === 'page-reading-log') {
+        const input = document.getElementById('reading-log-student-id');
+        if (input) { input.focus(); input.select(); }
+    }
+    if (activePage.id === 'page-class-loans') {
+        const input = document.getElementById('class-loan-isbn-input');
+        if (input) { input.focus(); input.select(); }
+    }
+    if (activePage.id === 'page-loans') {
+        const input = document.getElementById('loan-isbn-input');
+        if (input) { input.focus(); input.select(); }
+    }
+    if (activePage.id === 'page-books') {
+        const input = document.getElementById('search-books');
+        if (input) { input.focus(); input.select(); }
+    }
 });
 
 // --- RENDERING FUNCTIONS ---
@@ -499,7 +594,15 @@ const renderBooks = () => {
     const filteredBooks = books.filter(book => book.title.toLowerCase().includes(searchTerm) || (book.author && book.author.toLowerCase().includes(searchTerm)) || (book.isbn && book.isbn.toLowerCase().includes(searchTerm)));
     bookList.innerHTML = '';
     if (filteredBooks.length === 0) { bookList.innerHTML = `<tr><td colspan="9" class="text-center p-4 text-gray-500">រកមិនឃើញសៀវភៅទេ។</td></tr>`; return; }
-    const sortedBooks = [...filteredBooks].sort((a,b) => a.title.localeCompare(b.title));
+    const sortedBooks = [...filteredBooks].sort((a, b) => {
+        const aAuthor = (a.author || '').toLowerCase();
+        const bAuthor = (b.author || '').toLowerCase();
+        const byAuthor = aAuthor.localeCompare(bAuthor);
+        if (byAuthor !== 0) return byAuthor;
+        const aTitle = (a.title || '').toLowerCase();
+        const bTitle = (b.title || '').toLowerCase();
+        return aTitle.localeCompare(bTitle);
+    });
     sortedBooks.forEach((book, index) => {
         // Badge after title should reflect only individual borrowings (exclude class-linked)
         const individualLoanedCount = loans.filter(loan => loan.book_id === book.id && loan.status === 'ខ្ចី' && !loan.class_loan_id).length;
@@ -1822,7 +1925,11 @@ const saveDefaultPage = async () => {
             } else {
                 delete settingsData.default_page;
             }
-            alert('បានរក្សាទុកទំព័រលំនាំដើម។ ទំព័រនេះនឹងត្រូវបានប្រើជាទំព័រដើមនៅពេលចូលប្រើប្រាស់លើកក្រោយ។');
+            try {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('បានរក្សាទុកទំព័រលំនាំដើម ដោយជោគជ័យ!', 'bg-green-600');
+                }
+            } catch (_) { /* noop */ }
         } else {
             console.error("Error saving default page: ", error);
             alert('ការរក្សាទុកបានបរាជ័យ។');
@@ -2037,7 +2144,7 @@ window.openBookModal = (id = null) => {
     const bookForm = document.getElementById('book-form');
     bookForm.reset(); document.getElementById('book-id').value = '';
     const locationSelect = document.getElementById('book-location-id');
-    locationSelect.innerHTML = '<option value="">-- សូមជ្រើសរើសទីតាំង --</option>';
+    locationSelect.innerHTML = '<option value="">[គ្មាន]</option>';
     locations.forEach(loc => { const option = document.createElement('option'); option.value = loc.id; option.textContent = loc.name; locationSelect.appendChild(option); });
     if (id) {
         const book = books.find(b => b.id === id);
@@ -2054,27 +2161,77 @@ window.openBookModal = (id = null) => {
         }
     } else { document.getElementById('book-modal-title').textContent = 'បន្ថែមសៀវភៅថ្មី'; }
     document.getElementById('book-modal').classList.remove('hidden');
+    // Auto-focus ISBN when opening the form (both add and edit)
+    setTimeout(() => {
+        const isbnInput = document.getElementById('isbn');
+        if (isbnInput) isbnInput.focus();
+    }, 50);
 };
-window.closeBookModal = () => document.getElementById('book-modal').classList.add('hidden');
+window.closeBookModal = () => {
+    const modal = document.getElementById('book-modal');
+    if (modal) modal.classList.add('hidden');
+    // Return focus to Books search box
+    setTimeout(() => {
+        const input = document.getElementById('search-books');
+        if (input && !document.getElementById('book-modal')?.classList.contains('hidden')) return; // still open
+        if (input) { input.focus(); input.select(); }
+    }, 50);
+};
 window.editBook = (id) => openBookModal(id);
-window.deleteBook = async (id) => {
-    if (!currentUserId) return;
-    if (confirm('តើអ្នកពិតជាចង់លុបសៀវភៅនេះមែនទេ?')) {
-        const isLoaned = loans.some(loan => loan.book_id === id && loan.status === 'ខ្ចី');
-        if (isLoaned) { alert('មិនអាចលុបសៀវភៅនេះបានទេ ព្រោះកំពុងមានគេខ្ចី។'); return; }
-        try { 
-            const { error } = await supabase
-                .from('books')
-                .delete()
-                .eq('id', id)
-                .eq('user_id', currentUserId);
-            if (error) console.error("Error deleting document: ", error);
-            else {
-                await loadBooks(currentUserId);
-                renderAll();
-            }
-        } catch (e) { console.error("Error deleting document: ", e); }
+// Book Delete Confirmation Modal controls
+window.openBookDeleteModal = (id) => {
+    const modal = document.getElementById('book-delete-modal');
+    const messageEl = document.getElementById('book-delete-message');
+    const confirmBtn = document.getElementById('book-delete-confirm-btn');
+    const bookToDelete = books.find(b => String(b.id) === String(id));
+    const title = (bookToDelete?.title || '').trim();
+    if (messageEl) {
+        messageEl.textContent = title ? `តើអ្នកពិតជាចង់លុបសៀវភៅ "${title}" មែនទេ?` : 'តើអ្នកពិតជាចង់លុបសៀវភៅនេះមែនទេ?';
     }
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            await window.performDeleteBook(id);
+            window.closeBookDeleteModal();
+        };
+    }
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeBookDeleteModal = () => {
+    const modal = document.getElementById('book-delete-modal');
+    const confirmBtn = document.getElementById('book-delete-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = null;
+    if (modal) modal.classList.add('hidden');
+};
+
+window.performDeleteBook = async (id) => {
+    if (!currentUserId) return;
+    const bookToDelete = books.find(b => String(b.id) === String(id));
+    const isLoaned = loans.some(loan => loan.book_id === id && loan.status === 'ខ្ចី');
+    if (isLoaned) { alert('មិនអាចលុបសៀវភៅនេះបានទេ ព្រោះកំពុងមានគេខ្ចី។'); return; }
+    try {
+        const { error } = await supabase
+            .from('books')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', currentUserId);
+        if (error) {
+            console.error("Error deleting document: ", error);
+        } else {
+            await loadBooks(currentUserId);
+            renderAll();
+            try {
+                if (typeof window.showToast === 'function') {
+                    const t = (bookToDelete?.title || '').trim();
+                    window.showToast(`បានលុបសៀវភៅ ${t} ដោយជោគជ័យ!`, 'bg-green-600');
+                }
+            } catch (_) { /* noop */ }
+        }
+    } catch (e) { console.error("Error deleting document: ", e); }
+};
+window.deleteBook = (id) => {
+    if (!currentUserId) return;
+    window.openBookDeleteModal(id);
 };
 
 // Add real-time Khmer to English number conversion for book ISBN field
@@ -2097,15 +2254,10 @@ document.getElementById('book-form').addEventListener('submit', async (e) => {
         author: document.getElementById('author').value,
         isbn: isbnValue,
         quantity: parseInt(document.getElementById('quantity').value, 10) || 0,
-        location_id: document.getElementById('book-location-id').value,
+        location_id: document.getElementById('book-location-id').value || null,
         source: document.getElementById('source').value,
         book_url: document.getElementById('book-url').value,
     };
-
-    if (!bookData.location_id) {
-        alert('សូមជ្រើសរើសទីតាំងរក្សាទុក!');
-        return;
-    }
 
     if (bookData.isbn) {
         try {
@@ -2162,13 +2314,35 @@ document.getElementById('book-form').addEventListener('submit', async (e) => {
                 .insert([bookDataWithUserId]);
             if (error) throw error;
         }
-        closeBookModal();
+        // Reload list after save
         try {
             await loadBooks(currentUserId);
             renderAll();
         } catch (loadError) {
             console.error("Error loading books after save:", loadError);
             // Don't show error for load failure, book was saved successfully
+        }
+        // Show mini overlay (toast) for 1s: សៀវភៅ [title] + [author] + [quantity] បានរក្សាទុកជោគជ័យ
+        const t = (bookData.title || '').trim() || 'មិនមានចំណងជើង';
+        const a = (bookData.author || '').trim() || 'មិនមានអ្នកនិពន្ធ';
+        const q = bookData.quantity ?? 0;
+        if (typeof window.showToast === 'function') {
+            window.showToast(`សៀវភៅ ${t} + ${a} + ${q} បានរក្សាទុកជោគជ័យ`, 'bg-green-600');
+        }
+        // After save: if editing, close modal; if adding, reset form and focus ISBN for quick entry
+        if (id) {
+            closeBookModal();
+        } else {
+            const bookForm = document.getElementById('book-form');
+            bookForm.reset();
+            document.getElementById('book-id').value = '';
+            const locationSelect = document.getElementById('book-location-id');
+            if (locationSelect) {
+                locationSelect.innerHTML = '<option value="">[គ្មាន]</option>';
+                locations.forEach(loc => { const option = document.createElement('option'); option.value = loc.id; option.textContent = loc.name; locationSelect.appendChild(option); });
+            }
+            const isbnInput = document.getElementById('isbn');
+            if (isbnInput) isbnInput.focus();
         }
         //alert("រក្សាទុកសៀវភៅបានជោគជ័យ។");
     } catch (e) {
@@ -2318,6 +2492,13 @@ document.getElementById('loan-form').addEventListener('submit', async (e) => {
         
         await loadLoans(currentUserId);
         renderAll();
+        // Show centered overlay message for 3 seconds about successful loan save
+        try {
+            const bookTitles = selectedLoanBooks.map(b => (b.title || '').trim()).filter(Boolean).join(',');
+            if (typeof window.showToast === 'function') {
+                window.showToast(`បានរក្សាការខ្ចីសៀវភៅ របស់ សិស្សឈ្មោះ ${borrower}+${bookTitles} ដោយជោគជ័យ!`, 'bg-green-600');
+            }
+        } catch (_) { /* noop */ }
         clearLoanForm();
     } 
     catch(e) { console.error("Error adding loan: ", e); }
@@ -2343,22 +2524,64 @@ window.returnBook = async (id) => {
         } catch (e) { console.error("Error updating loan: ", e); }
     }
 };
-window.deleteLoan = async (id) => {
-    if (!currentUserId) return;
-    if (confirm('តើអ្នកពិតជាចង់លុបកំណត់ត្រានេះមែនទេ?')) {
-        try { 
-            const { error } = await supabase
-                .from('loans')
-                .delete()
-                .eq('id', id)
-                .eq('user_id', currentUserId);
-            if (error) console.error("Error deleting loan: ", error);
-            else {
-                await loadLoans(currentUserId);
-                renderAll();
-            }
-        } catch (e) { console.error("Error deleting loan: ", e); }
+// Loan Delete Confirmation Modal controls
+window.openLoanDeleteModal = (id) => {
+    const modal = document.getElementById('loan-delete-modal');
+    const messageEl = document.getElementById('loan-delete-message');
+    const confirmBtn = document.getElementById('loan-delete-confirm-btn');
+    const loanToDelete = loans.find(l => String(l.id) === String(id));
+    const borrower = (loanToDelete?.borrower || '').trim();
+    const bookForLoan = loanToDelete ? books.find(b => String(b.id) === String(loanToDelete.book_id)) : null;
+    const bookTitle = (bookForLoan?.title || '').trim();
+    if (messageEl) {
+        const detail = [borrower, bookTitle].filter(Boolean).join(' • ');
+        messageEl.textContent = detail ? `តើអ្នកពិតជាចង់លុបកំណត់ត្រា៖ ${detail} មែនទេ?` : 'តើអ្នកពិតជាចង់លុបកំណត់ត្រានេះមែនទេ?';
     }
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            await window.performDeleteLoan(id);
+            window.closeLoanDeleteModal();
+        };
+    }
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeLoanDeleteModal = () => {
+    const modal = document.getElementById('loan-delete-modal');
+    const confirmBtn = document.getElementById('loan-delete-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = null;
+    if (modal) modal.classList.add('hidden');
+};
+
+window.performDeleteLoan = async (id) => {
+    if (!currentUserId) return;
+    const loanToDelete = loans.find(l => String(l.id) === String(id));
+    const bookForLoan = loanToDelete ? books.find(b => String(b.id) === String(loanToDelete.book_id)) : null;
+    try {
+        const { error } = await supabase
+            .from('loans')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', currentUserId);
+        if (error) {
+            console.error('Error deleting loan: ', error);
+        } else {
+            await loadLoans(currentUserId);
+            renderAll();
+            try {
+                if (typeof window.showToast === 'function') {
+                    const borrower = (loanToDelete?.borrower || '').trim();
+                    const bookTitle = (bookForLoan?.title || '').trim();
+                    window.showToast(`បានលុបការខ្ចី ${borrower}+${bookTitle} ដោយជោគជ័យ!`, 'bg-green-600');
+                }
+            } catch (_) { /* noop */ }
+        }
+    } catch (e) { console.error('Error deleting loan: ', e); }
+};
+
+window.deleteLoan = (id) => {
+    if (!currentUserId) return;
+    window.openLoanDeleteModal(id);
 };
 
 // --- LOAN MANAGEMENT (CLASS) ---
@@ -2582,6 +2805,15 @@ document.getElementById('class-loan-form').addEventListener('submit', async (e) 
         await loadLoans(currentUserId);
         await loadClassLoans(currentUserId);
         renderAll();
+        // Show centered overlay message for 3 seconds about successful class loan save
+        try {
+            const classNameText = className || '';
+            const bookTitles = currentClassLoanScannedBooks.map(b => (b.title || '').trim()).filter(Boolean).join(',');
+            const qty = quantity;
+            if (typeof window.showToast === 'function') {
+                window.showToast(`បានរក្សាការខ្ចីសៀវភៅ របស់ ថ្នាក់ ${classNameText}+${bookTitles} ចំនួន ${qty} នាក់ ដោយជោគជ័យ!`, 'bg-green-600');
+            }
+        } catch (_) { /* noop */ }
         populateClassLoanForm(); // Reset the form completely
     } catch (err) { 
         console.error("Error creating class loan: ", err); 
@@ -2821,6 +3053,7 @@ document.getElementById('grouped-class-return-form').addEventListener('submit', 
         await loadLoans(currentUserId);
         await loadClassLoans(currentUserId);
         renderAll();
+        try { if (typeof window.showToast === 'function') { window.showToast('សងសៀវភៅតាមថ្នាក់បានជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
         closeGroupedClassReturnModal();
         
     } catch (err) {
@@ -2832,61 +3065,80 @@ document.getElementById('grouped-class-return-form').addEventListener('submit', 
 });
 
 // Grouped Class Loan Delete Function
-window.deleteGroupedClassLoan = async (groupKey) => {
-    if (!currentUserId) return;
-    
+// Centered modal handlers for Grouped Class Loan deletion
+window.openClassLoanDeleteModal = (groupKey) => {
+    const modal = document.getElementById('class-loan-delete-modal');
+    const msg = document.getElementById('class-loan-delete-message');
+    const listEl = document.getElementById('class-loan-delete-books');
+    const btn = document.getElementById('class-loan-delete-confirm-btn');
+    if (!modal || !btn) return;
     const [className, loanDate] = groupKey.split('|');
-    
-    // Find all class loans for this group
-    const groupedLoans = classLoans.filter(loan => 
-        loan.class_name === className && loan.loan_date === loanDate
-    );
-    
-    if (groupedLoans.length === 0) return;
-    
-    // Get book titles for confirmation message
+    const groupedLoans = classLoans.filter(loan => loan.class_name === className && loan.loan_date === loanDate);
     const bookTitles = groupedLoans.map(loan => {
         const book = books.find(b => b.id === loan.book_id);
         return book ? book.title : 'សៀវភៅត្រូវបានលុប';
     });
-    
-    const confirmMessage = `តើអ្នកពិតជាចង់លុបការខ្ចីតាមថ្នាក់ "${className}" កាលបរិច្ឆេទ ${loanDate} មែនទេ?\n\nសៀវភៅដែលនឹងត្រូវលុប:\n${bookTitles.join('\n')}\n\nការធ្វើបែបនេះនឹងលុបកំណត់ត្រាខ្ចីរបស់សិស្សទាំងអស់ដែលពាក់ព័ន្ធនឹងការខ្ចីនេះ។`;
-    
-    if (confirm(confirmMessage)) {
-        loadingOverlay.classList.remove('hidden');
-        try {
-            // Delete all individual loans for each class loan in the group
-            for (const classLoan of groupedLoans) {
-                const { error: deleteLoansError } = await supabase
-                    .from('loans')
-                    .delete()
-                    .eq('class_loan_id', classLoan.id)
-                    .eq('user_id', currentUserId);
-                
-                if (deleteLoansError) throw deleteLoansError;
-                
-                // Delete the class loan record
-                const { error: deleteClassLoanError } = await supabase
-                    .from('class_loans')
-                    .delete()
-                    .eq('id', classLoan.id)
-                    .eq('user_id', currentUserId);
-                
-                if (deleteClassLoanError) throw deleteClassLoanError;
-            }
-            
-            // Refresh data and re-render after successful deletion
-            await loadClassLoans(currentUserId);
-            await loadLoans(currentUserId);
-            renderAll();
-            
-        } catch (e) {
-            console.error("Error deleting grouped class loans: ", e);
-            alert("ការលុបបានបរាជ័យ។");
-        } finally {
-            loadingOverlay.classList.add('hidden');
-        }
+    if (msg) msg.textContent = `តើអ្នកពិតជាចង់លុបការខ្ចីតាមថ្នាក់ «${className}» កាលបរិច្ឆេទ ${loanDate} មែនទេ?`;
+    if (listEl) {
+        listEl.innerHTML = '';
+        bookTitles.forEach(t => {
+            const li = document.createElement('li');
+            li.textContent = t;
+            listEl.appendChild(li);
+        });
     }
+    btn.onclick = async () => { await window.performClassLoanDelete(groupKey, bookTitles); window.closeClassLoanDeleteModal(); };
+    modal.classList.remove('hidden');
+};
+
+window.closeClassLoanDeleteModal = () => {
+    const modal = document.getElementById('class-loan-delete-modal');
+    const btn = document.getElementById('class-loan-delete-confirm-btn');
+    if (btn) btn.onclick = null;
+    if (modal) modal.classList.add('hidden');
+};
+
+window.performClassLoanDelete = async (groupKey, bookTitles) => {
+    if (!currentUserId) return;
+    const [className, loanDate] = groupKey.split('|');
+    const groupedLoans = classLoans.filter(loan => loan.class_name === className && loan.loan_date === loanDate);
+    if (groupedLoans.length === 0) return;
+    loadingOverlay.classList.remove('hidden');
+    try {
+        for (const classLoan of groupedLoans) {
+            const { error: deleteLoansError } = await supabase
+                .from('loans')
+                .delete()
+                .eq('class_loan_id', classLoan.id)
+                .eq('user_id', currentUserId);
+            if (deleteLoansError) throw deleteLoansError;
+            const { error: deleteClassLoanError } = await supabase
+                .from('class_loans')
+                .delete()
+                .eq('id', classLoan.id)
+                .eq('user_id', currentUserId);
+            if (deleteClassLoanError) throw deleteClassLoanError;
+        }
+        await loadClassLoans(currentUserId);
+        await loadLoans(currentUserId);
+        renderAll();
+        try {
+            if (typeof window.showToast === 'function') {
+                const titles = (bookTitles || []).filter(Boolean).join(', ');
+                window.showToast(`បានលុបការខ្ចីតាមថ្នាក់ «${className}» កាលបរិច្ឆេទ ${loanDate} សៀវភៅ៖ ${titles} ដោយជោគជ័យ!`, 'bg-green-600');
+            }
+        } catch (_) { /* noop */ }
+    } catch (e) {
+        console.error('Error deleting grouped class loans: ', e);
+        alert('ការលុបបានបរាជ័យ។');
+    } finally {
+        loadingOverlay.classList.add('hidden');
+    }
+};
+
+window.deleteGroupedClassLoan = (groupKey) => {
+    if (!currentUserId) return;
+    window.openClassLoanDeleteModal(groupKey);
 };
 
 window.openClassLoanEditModal = (id) => {
@@ -2934,6 +3186,10 @@ document.getElementById('class-loan-edit-form').addEventListener('submit', async
 
 window.deleteClassLoan = async (id) => {
     if (!currentUserId) return;
+    const classLoanInfo = classLoans.find(cl => String(cl.id) === String(id));
+    const className = classLoanInfo?.class_name || '';
+    const loanDate = classLoanInfo?.loan_date || '';
+    const bookTitle = (() => { const b = books.find(x => String(x.id) === String(classLoanInfo?.book_id)); return (b?.title || '').trim(); })();
     if (confirm('តើអ្នកពិតជាចង់លុបប្រវត្តិនៃការខ្ចីតាមថ្នាក់នេះមែនទេ? ការធ្វើបែបនេះនឹងលុបកំណត់ត្រាខ្ចីរបស់សិស្សទាំងអស់ដែលពាក់ព័ន្ធនឹងការខ្ចីនេះ។')) {
         loadingOverlay.classList.remove('hidden');
         try {
@@ -2959,6 +3215,11 @@ window.deleteClassLoan = async (id) => {
             await loadClassLoans(currentUserId);
             await loadLoans(currentUserId);
             renderAll();
+            try {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(`បានលុបការខ្ចីតាមថ្នាក់ «${className}» កាលបរិច្ឆេទ ${loanDate} សៀវភៅ៖ ${bookTitle} ដោយជោគជ័យ!`, 'bg-green-600');
+                }
+            } catch (_) { /* noop */ }
             
         } catch (e) { console.error("Error deleting class loan and associated loans: ", e); alert("ការលុបបានបរាជ័យ។");
         } finally { loadingOverlay.classList.add('hidden'); }
@@ -2982,26 +3243,92 @@ window.openLocationModal = (id = null) => {
     document.getElementById('location-modal').classList.remove('hidden');
 };
 window.closeLocationModal = () => document.getElementById('location-modal').classList.add('hidden');
-window.editLocation = (id) => openLocationModal(id);
-window.deleteLocation = async (id) => {
-    if (!currentUserId) return;
-    if (confirm('តើអ្នកពិតជាចង់លុបទីតាំងនេះមែនទេ?')) {
-        const isUsed = books.some(book => book.location_id === id);
-        if (isUsed) { alert('មិនអាចលុបទីតាំងនេះបានទេ ព្រោះកំពុងប្រើប្រាស់ដោយសៀវភៅ។'); return; }
-        try { 
-            const { error } = await supabase
-                .from('locations')
-                .delete()
-                .eq('id', id)
-                .eq('user_id', currentUserId);
-            if (error) console.error("Error deleting location: ", error);
-            else {
-                await loadLocations(currentUserId);
-                renderAll();
-            }
-        } catch (e) { console.error("Error deleting location: ", e); }
-    }
+window.closeLocationModal = () => {
+    const modal = document.getElementById('location-modal');
+    if (modal) modal.classList.add('hidden');
+    // Return focus to Locations search box
+    setTimeout(() => {
+        const input = document.getElementById('search-locations');
+        if (input && !document.getElementById('location-modal')?.classList.contains('hidden')) return; // still open
+        if (input) { input.focus(); input.select(); }
+    }, 50);
 };
+window.editLocation = (id) => openLocationModal(id);
+
+// Location Delete Confirmation Modal controls
+window.openLocationDeleteModal = (id) => {
+    const modal = document.getElementById('location-delete-modal');
+    const messageEl = document.getElementById('location-delete-message');
+    const confirmBtn = document.getElementById('location-delete-confirm-btn');
+    const loc = locations.find(l => String(l.id) === String(id));
+    const isUsed = books.some(book => String(book.location_id) === String(id));
+    if (isUsed) { 
+        if (typeof window.openLocationInUseModal === 'function') {
+            window.openLocationInUseModal();
+        } else {
+            alert('មិនអាចលុបទីតាំងនេះបានទេ ព្រោះកំពុងប្រើប្រាស់ដោយសៀវភៅ។');
+        }
+        return; 
+    }
+    if (messageEl) {
+        const name = (loc?.name || '').trim();
+        messageEl.textContent = name ? `តើអ្នកពិតជាចង់លុបទីតាំង «${name}» មែនទេ?` : 'តើអ្នកពិតជាចង់លុបទីតាំងនេះមែនទេ?';
+    }
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            await window.performDeleteLocation(id);
+            window.closeLocationDeleteModal();
+        };
+    }
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeLocationDeleteModal = () => {
+    const modal = document.getElementById('location-delete-modal');
+    const confirmBtn = document.getElementById('location-delete-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = null;
+    if (modal) modal.classList.add('hidden');
+};
+
+window.performDeleteLocation = async (id) => {
+    if (!currentUserId) return;
+    const locToDelete = locations.find(l => String(l.id) === String(id));
+    try { 
+        const { error } = await supabase
+            .from('locations')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', currentUserId);
+        if (error) console.error('Error deleting location: ', error);
+        else {
+            await loadLocations(currentUserId);
+            renderAll();
+            try {
+                if (typeof window.showToast === 'function') {
+                    const name = (locToDelete?.name || '').trim();
+                    window.showToast(`បានលុបទីតាំង «${name}» ដោយជោគជ័យ!`, 'bg-green-600');
+                }
+            } catch (_) { /* noop */ }
+        }
+    } catch (e) { console.error('Error deleting location: ', e); }
+};
+
+window.deleteLocation = (id) => {
+    if (!currentUserId) return;
+    window.openLocationDeleteModal(id);
+};
+
+// Location In-Use Info Modal controls
+window.openLocationInUseModal = () => {
+    const modal = document.getElementById('location-inuse-modal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeLocationInUseModal = () => {
+    const modal = document.getElementById('location-inuse-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
 document.getElementById('location-form').addEventListener('submit', async (e) => {
     e.preventDefault(); if (!currentUserId) return;
     const id = document.getElementById('location-id').value;
@@ -3027,6 +3354,13 @@ document.getElementById('location-form').addEventListener('submit', async (e) =>
         } 
         await loadLocations(currentUserId);
         renderAll();
+        // Centered toast for successful location save
+        try {
+            const locName = (locData.name || '').trim();
+            if (typeof window.showToast === 'function') {
+                window.showToast(`បានរក្សាទុកទីតាំង ${locName} ដោយជោគជ័យ!`, 'bg-green-600');
+            }
+        } catch (_) { /* noop */ }
         closeLocationModal(); 
     } catch (e) { console.error("Error adding/updating location: ", e); }
 });
@@ -3077,28 +3411,73 @@ window.openStudentModal = (id = null) => {
 };
 
 window.closeStudentModal = () => {
-    document.getElementById('student-modal').classList.add('hidden');
+    const modal = document.getElementById('student-modal');
+    if (modal) modal.classList.add('hidden');
+    // Return focus to Students search box
+    setTimeout(() => {
+        const input = document.getElementById('search-students');
+        if (input && !document.getElementById('student-modal')?.classList.contains('hidden')) return; // still open
+        if (input) { input.focus(); input.select(); }
+    }, 50);
 };
 
-window.deleteStudent = async (id) => {
-    if (!currentUserId) return;
-    if (confirm('តើអ្នកពិតជាចង់លុបព័ត៌មានសិស្សនេះមែនទេ?')) {
-        try {
-            const { error } = await supabase
-                .from('students')
-                .delete()
-                .eq('id', id)
-                .eq('user_id', currentUserId);
-            if (error) throw error;
-            await loadStudents(currentUserId);
-            populateClassLoanFilter();
-            populateStudentClassFilter();
-            renderAll();
-        } catch (e) {
-            console.error("Error deleting student: ", e);
-            alert("ការលុបបានបរាជ័យ។");
-        }
+// Student Delete Confirmation Modal controls
+window.openStudentDeleteModal = (id) => {
+    const modal = document.getElementById('student-delete-modal');
+    const messageEl = document.getElementById('student-delete-message');
+    const confirmBtn = document.getElementById('student-delete-confirm-btn');
+    const std = students.find(s => String(s.id) === String(id));
+    const fullName = `${(std?.['នាមត្រកូល'] || '').trim()} ${(std?.['នាមខ្លួន'] || '').trim()}`.trim();
+    if (messageEl) {
+        messageEl.textContent = fullName
+            ? `តើអ្នកពិតជាចង់លុបព័ត៌មានសិស្សឈ្មោះ ${fullName} មែនទេ?`
+            : 'តើអ្នកពិតជាចង់លុបព័ត៌មានសិស្សនេះមែនទេ?';
     }
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            await window.performDeleteStudent(id);
+            window.closeStudentDeleteModal();
+        };
+    }
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeStudentDeleteModal = () => {
+    const modal = document.getElementById('student-delete-modal');
+    const confirmBtn = document.getElementById('student-delete-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = null;
+    if (modal) modal.classList.add('hidden');
+};
+
+window.performDeleteStudent = async (id) => {
+    if (!currentUserId) return;
+    const std = students.find(s => String(s.id) === String(id));
+    try {
+        const { error } = await supabase
+            .from('students')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', currentUserId);
+        if (error) throw error;
+        await loadStudents(currentUserId);
+        populateClassLoanFilter();
+        populateStudentClassFilter();
+        renderAll();
+        try {
+            if (typeof window.showToast === 'function') {
+                const fullName = `${(std?.['នាមត្រកូល'] || '').trim()} ${(std?.['នាមខ្លួន'] || '').trim()}`.trim();
+                window.showToast(`បានលុបព័ត៌មានសិស្សឈ្មោះ ${fullName} ដោយជោគជ័យ!`, 'bg-green-600');
+            }
+        } catch (_) { /* noop */ }
+    } catch (e) {
+        console.error('Error deleting student: ', e);
+        alert('ការលុបបានបរាជ័យ។');
+    }
+};
+
+window.deleteStudent = (id) => {
+    if (!currentUserId) return;
+    window.openStudentDeleteModal(id);
 };
 
 document.getElementById('student-form').addEventListener('submit', async (e) => {
@@ -3170,6 +3549,13 @@ document.getElementById('student-form').addEventListener('submit', async (e) => 
         populateStudentClassFilter();
         closeStudentModal();
         renderAll();
+        // Centered toast for successful student save
+        try {
+            const fullName = `${(supabasePayload['នាមត្រកូល'] || '').trim()} ${(supabasePayload['នាមខ្លួន'] || '').trim()}`.trim();
+            if (typeof window.showToast === 'function') {
+                window.showToast(`បានរក្សាទុកសិស្សឈ្មោះ ${fullName} ដោយជោគជ័យ!`, 'bg-green-600');
+            }
+        } catch (_) { /* noop */ }
     } catch (err) {
         console.error('Error saving student data: ', err);
         // Friendly messages for common cases
@@ -3304,27 +3690,73 @@ document.getElementById('reading-log-form').addEventListener('submit', async (e)
         if (error) throw error;
         await loadReadingLogs(currentUserId);
         renderAll();
+        // Centered toast for successful reading log save
+        try {
+            const titles = currentScannedBooks.map(b => (b.title || '').trim()).filter(Boolean).join(',');
+            if (typeof window.showToast === 'function') {
+                window.showToast(`បានរក្សាកំណត់ត្រាចូលអាន របស់ សិស្សឈ្មោះ ${studentName}+${titles} ដោយជោគជ័យ!`, 'bg-green-600');
+            }
+        } catch (_) { /* noop */ }
         window.clearReadingLogForm(); 
     } 
     catch (err) { console.error("Error saving reading log: ", err); alert("ការរក្សាទុកកំណត់ត្រាចូលអានបានបរាជ័យ។"); }
 });
 
-window.deleteReadingLog = async (id) => {
-     if (!currentUserId) return;
-     if (confirm('តើអ្នកពិតជាចង់លុបកំណត់ត្រាចូលអាននេះមែនទេ?')) {
-         try { 
-            const { error } = await supabase
-                .from('reading_logs')
-                .delete()
-                .eq('id', id)
-                .eq('user_id', currentUserId);
-            if (error) console.error("Error deleting reading log: ", error);
-            else {
-                await loadReadingLogs(currentUserId);
-                renderAll();
-            }
-         } catch (e) { console.error("Error deleting reading log: ", e); alert("ការលុបបានបរាជ័យ។"); }
-     }
+// Reading Log Delete Confirmation Modal controls
+window.openReadingDeleteModal = (id) => {
+    const modal = document.getElementById('reading-delete-modal');
+    const messageEl = document.getElementById('reading-delete-message');
+    const confirmBtn = document.getElementById('reading-delete-confirm-btn');
+    const log = readingLogs.find(r => String(r.id) === String(id));
+    const name = (log?.student_name || '').trim();
+    if (messageEl) {
+        messageEl.textContent = name
+            ? `តើអ្នកពិតជាចង់លុបកំណត់ត្រាចូលអាន របស់ សិស្សឈ្មោះ ${name} មែនទេ?`
+            : 'តើអ្នកពិតជាចង់លុបកំណត់ត្រាចូលអាននេះមែនទេ?';
+    }
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            await window.performDeleteReadingLog(id);
+            window.closeReadingDeleteModal();
+        };
+    }
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeReadingDeleteModal = () => {
+    const modal = document.getElementById('reading-delete-modal');
+    const confirmBtn = document.getElementById('reading-delete-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = null;
+    if (modal) modal.classList.add('hidden');
+};
+
+window.performDeleteReadingLog = async (id) => {
+    if (!currentUserId) return;
+    const log = readingLogs.find(r => String(r.id) === String(id));
+    try {
+        const { error } = await supabase
+            .from('reading_logs')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', currentUserId);
+        if (error) {
+            console.error('Error deleting reading log: ', error);
+        } else {
+            await loadReadingLogs(currentUserId);
+            renderAll();
+            try {
+                if (typeof window.showToast === 'function') {
+                    const name = (log?.student_name || '').trim();
+                    window.showToast(`បានលុបកំណត់ត្រាចូលអាន របស់ សិស្សឈ្មោះ ${name} ដោយជោគជ័យ!`, 'bg-green-600');
+                }
+            } catch (_) { /* noop */ }
+        }
+    } catch (e) { console.error('Error deleting reading log: ', e); alert('ការលុបបានបរាជ័យ។'); }
+};
+
+window.deleteReadingLog = (id) => {
+    if (!currentUserId) return;
+    window.openReadingDeleteModal(id);
 };
 
 // --- EXPORT DATA TO EXCEL ---
@@ -3534,7 +3966,7 @@ async function deleteAllData(collectionName) {
         // Re-render all data
         renderAll();
         
-        alert(`បានលុបទិន្នន័យទាំងអស់ក្នុង "${collectionName}" ដោយជោគជ័យ។`);
+        try { if (typeof window.showToast === 'function') { window.showToast(`បានលុបទិន្នន័យទាំងអស់ក្នុង "${collectionName}" ដោយជោគជ័យ!`, 'bg-green-600'); } } catch (_) { }
     } catch (error) {
         console.error(`Error deleting all documents from ${collectionName}:`, error);
         alert(`ការលុបទិន្នន័យក្នុង "${collectionName}" បានបរាជ័យ។`);
@@ -3564,7 +3996,7 @@ saveSchoolNameBtn.addEventListener('click', async () => {
         if (error) throw error;
         await loadSettings(currentUserId);
         renderAll();
-        alert('រក្សាទុកឈ្មោះសាលាបានជោគជ័យ។');
+        try { if (typeof window.showToast === 'function') { window.showToast('រក្សាទុកឈ្មោះសាលាបានជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
     } catch (e) { console.error(e); alert('ការរក្សាទុកបានបរាជ័យ។'); }
 });
 
@@ -3577,20 +4009,42 @@ editSchoolNameBtn.addEventListener('click', () => {
     schoolNameInput.focus();
 });
 
-deleteSchoolNameBtn.addEventListener('click', async () => {
-    if (confirm('តើអ្នកពិតជាចង់លុបឈ្មោះសាលាមែនទេ?')) {
-        try {
-            const { error } = await supabase
-                .from('settings')
-                .delete()
-                .eq('key', 'schoolName')
-                .eq('user_id', currentUserId);
-            if (error) throw error;
-            await loadSettings(currentUserId);
-            renderAll();
-            alert('បានលុបឈ្មោះសាលា។');
-        } catch (e) { console.error(e); alert('ការលុបបានបរាជ័យ។'); }
+// Settings: School Name delete modal handlers
+window.openSchoolNameDeleteModal = () => {
+    const modal = document.getElementById('schoolname-delete-modal');
+    const confirmBtn = document.getElementById('schoolname-delete-confirm-btn');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            await window.performDeleteSchoolName();
+            window.closeSchoolNameDeleteModal();
+        };
     }
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeSchoolNameDeleteModal = () => {
+    const modal = document.getElementById('schoolname-delete-modal');
+    const confirmBtn = document.getElementById('schoolname-delete-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = null;
+    if (modal) modal.classList.add('hidden');
+};
+
+window.performDeleteSchoolName = async () => {
+    try {
+        const { error } = await supabase
+            .from('settings')
+            .delete()
+            .eq('key', 'schoolName')
+            .eq('user_id', currentUserId);
+        if (error) throw error;
+        await loadSettings(currentUserId);
+        renderAll();
+        try { if (typeof window.showToast === 'function') { window.showToast('បានលុបឈ្មោះសាលា ដោយជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
+    } catch (e) { console.error(e); alert('ការលុបបានបរាជ័យ។'); }
+};
+
+deleteSchoolNameBtn.addEventListener('click', () => {
+    window.openSchoolNameDeleteModal();
 });
 
 // Academic Year Listeners
@@ -3616,7 +4070,7 @@ saveAcademicYearBtn.addEventListener('click', async () => {
         if (error) throw error;
         await loadSettings(currentUserId);
         renderAll();
-        alert('រក្សាទុកឆ្នាំសិក្សាបានជោគជ័យ។');
+        try { if (typeof window.showToast === 'function') { window.showToast('រក្សាទុកឆ្នាំសិក្សាបានជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
     } catch (e) { console.error(e); alert('ការរក្សាទុកបានបរាជ័យ។'); }
 });
 
@@ -3629,20 +4083,42 @@ editAcademicYearBtn.addEventListener('click', () => {
     academicYearInput.focus();
 });
 
-deleteAcademicYearBtn.addEventListener('click', async () => {
-    if (confirm('តើអ្នកពិតជាចង់លុបឆ្នាំសិក្សាមែនទេ?')) {
-        try {
-            const { error } = await supabase
-                .from('settings')
-                .delete()
-                .eq('key', 'academicYear')
-                .eq('user_id', currentUserId);
-            if (error) throw error;
-            await loadSettings(currentUserId);
-            renderAll();
-            alert('បានលុបឆ្នាំសិក្សា។');
-        } catch (e) { console.error(e); alert('ការលុបបានបរាជ័យ។'); }
+// Settings: Academic Year delete modal handlers
+window.openAcademicYearDeleteModal = () => {
+    const modal = document.getElementById('academicyear-delete-modal');
+    const confirmBtn = document.getElementById('academicyear-delete-confirm-btn');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            await window.performDeleteAcademicYear();
+            window.closeAcademicYearDeleteModal();
+        };
     }
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeAcademicYearDeleteModal = () => {
+    const modal = document.getElementById('academicyear-delete-modal');
+    const confirmBtn = document.getElementById('academicyear-delete-confirm-btn');
+    if (confirmBtn) confirmBtn.onclick = null;
+    if (modal) modal.classList.add('hidden');
+};
+
+window.performDeleteAcademicYear = async () => {
+    try {
+        const { error } = await supabase
+            .from('settings')
+            .delete()
+            .eq('key', 'academicYear')
+            .eq('user_id', currentUserId);
+        if (error) throw error;
+        await loadSettings(currentUserId);
+        renderAll();
+        try { if (typeof window.showToast === 'function') { window.showToast('បានលុបឆ្នាំសិក្សា ដោយជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
+    } catch (e) { console.error(e); alert('ការលុបបានបរាជ័យ។'); }
+};
+
+deleteAcademicYearBtn.addEventListener('click', () => {
+    window.openAcademicYearDeleteModal();
 });
 
 
@@ -3677,7 +4153,7 @@ saveSealUrlBtn.addEventListener('click', async () => {
                     onConflict: 'key,user_id'
                 });
             if (error) throw error;
-            alert('រក្សាទុក URL ត្រាបានជោគជ័យ។');
+            try { if (typeof window.showToast === 'function') { window.showToast('រក្សាទុក URL ត្រាបានជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
         } else {
             const { error } = await supabase
                 .from('settings')
@@ -3685,7 +4161,7 @@ saveSealUrlBtn.addEventListener('click', async () => {
                 .eq('key', 'sealImageUrl')
                 .eq('user_id', currentUserId);
             if (error) throw error;
-            alert('បានលុប URL ត្រា។');
+            try { if (typeof window.showToast === 'function') { window.showToast('បានលុប URL ត្រា ដោយជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
         }
     } catch (e) { console.error(e); alert('ការរក្សាទុកបានបរាជ័យ។'); }
 });
@@ -3718,7 +4194,7 @@ saveCardBgBtn.addEventListener('click', async () => {
                     onConflict: 'key,user_id'
                 });
             if (error) throw error;
-            alert('រក្សាទុក URL ផ្ទៃខាងក្រោយកាតបានជោគជ័យ។');
+            try { if (typeof window.showToast === 'function') { window.showToast('រក្សាទុក URL ផ្ទៃខាងក្រោយកាតបានជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
         } else {
             const { error } = await supabase
                 .from('settings')
@@ -3726,7 +4202,7 @@ saveCardBgBtn.addEventListener('click', async () => {
                 .eq('key', 'cardBgUrl')
                 .eq('user_id', currentUserId);
             if (error) throw error;
-            alert('បានលុប URL ផ្ទៃខាងក្រោយកាត។');
+            try { if (typeof window.showToast === 'function') { window.showToast('បានលុប URL ផ្ទៃខាងក្រោយកាត ដោយជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
         }
     } catch (e) { console.error(e); alert('ការរក្សាទុកបានបរាជ័យ។'); }
 });
@@ -3767,6 +4243,7 @@ changePasswordForm.addEventListener('submit', async (e) => {
         if (error) throw error;
         
         successP.textContent = 'ផ្លាស់ប្តូរពាក្យសម្ងាត់បានជោគជ័យ!';
+        try { if (typeof window.showToast === 'function') { window.showToast('ផ្លាស់ប្តូរពាក្យសម្ងាត់បានជោគជ័យ!', 'bg-green-600'); } } catch (_) { }
         changePasswordForm.reset();
     } catch (error) {
         console.error("Password change failed:", error);
@@ -3846,6 +4323,38 @@ const prepareAndPrint = (printClass) => {
     }
     document.body.classList.add(printClass);
     window.print();
+};
+
+// --- UI TOAST ---
+// Lightweight toast for short success/error messages
+window.__toastTimer = null;
+window.showToast = (message, bgClass = 'bg-green-600') => {
+    let el = document.getElementById('app-toast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'app-toast';
+        el.className = `${bgClass} text-white px-5 py-3 rounded shadow-lg fixed z-50 transition-opacity duration-200`;
+        el.style.opacity = '0';
+        el.style.top = '50%';
+        el.style.left = '50%';
+        el.style.transform = 'translate(-50%, -50%)';
+        el.style.pointerEvents = 'none';
+        document.body.appendChild(el);
+    }
+    // Update styles/message each time
+    el.className = `${bgClass} text-white px-5 py-3 rounded shadow-lg fixed z-50 transition-opacity duration-200`;
+    el.style.top = '50%';
+    el.style.left = '50%';
+    el.style.transform = 'translate(-50%, -50%)';
+    el.style.pointerEvents = 'none';
+    el.textContent = message || '';
+    // Show
+    requestAnimationFrame(() => { el.style.opacity = '1'; });
+    // Clear existing timer and schedule hide
+    if (window.__toastTimer) clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => {
+        el.style.opacity = '0';
+    }, 3000);
 };
 
 window.printReport = () => {
@@ -3950,7 +4459,11 @@ function navigateToStudentCards() {
 document.getElementById('print-class-loan-list-btn').addEventListener('click', () => {
     const selectedClass = document.getElementById('class-loan-filter-select').value;
     if (!selectedClass) {
-        alert('សូមជ្រើសរើសថ្នាក់ដែលត្រូវបោះពុម្ពជាមុនសិន។');
+        if (typeof window.openClassLoanSelectRequiredModal === 'function') {
+            window.openClassLoanSelectRequiredModal();
+        } else {
+            alert('សូមជ្រើសរើសថ្នាក់ដែលត្រូវបោះពុម្ពជាមុនសិន។');
+        }
         return;
     }
     
@@ -4253,7 +4766,11 @@ const addSelectedLoanBook = (bookId) => {
     
     // Check if book is already selected
     if (selectedLoanBooks.find(b => String(b.id) === String(bookId))) {
-        alert('សៀវភៅនេះត្រូវបានជ្រើសរើសរួចហើយ។');
+        if (typeof window.openLoanDuplicateModal === 'function') {
+            window.openLoanDuplicateModal();
+        } else {
+            alert('សៀវភៅនេះត្រូវបានជ្រើសរើសរួចហើយ។');
+        }
         return false;
     }
     
@@ -4286,6 +4803,27 @@ window.removeSelectedLoanBook = (index) => {
 const clearSelectedLoanBooks = () => {
     selectedLoanBooks = [];
     renderSelectedLoanBooks();
+};
+
+// Duplicate Selected Book Info Modal controls
+window.openLoanDuplicateModal = () => {
+    const modal = document.getElementById('loan-duplicate-modal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeLoanDuplicateModal = () => {
+    const modal = document.getElementById('loan-duplicate-modal');
+    if (modal) modal.classList.add('hidden');
+};
+// Class Selection Required Info Modal controls (Class Loans)
+window.openClassLoanSelectRequiredModal = () => {
+    const modal = document.getElementById('class-loan-select-required-modal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeClassLoanSelectRequiredModal = () => {
+    const modal = document.getElementById('class-loan-select-required-modal');
+    if (modal) modal.classList.add('hidden');
 };
 
 // --- BOOK DROPDOWN EVENT HANDLERS ---

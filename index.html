@@ -34,6 +34,140 @@
          </div>
     </div>
 
+    <!-- Book Delete Confirmation Modal -->
+    <div id="book-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុប</h3>
+        <p id="book-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបសៀវភៅនេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeBookDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="book-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loan Delete Confirmation Modal -->
+    <div id="loan-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុប</h3>
+        <p id="loan-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបកំណត់ត្រានេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeLoanDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="loan-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grouped Loan Delete Confirmation Modal (Individual Loans) -->
+    <div id="grouped-loan-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបការខ្ចីជាក្រុម</h3>
+        <p id="grouped-loan-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបការខ្ចីនេះទាំងស្រុងមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeGroupedLoanDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="grouped-loan-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grouped Class Loan Delete Confirmation Modal (Class Loans page) -->
+    <div id="class-loan-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបការខ្ចីតាមថ្នាក់</h3>
+        <div class="text-gray-700 mb-4">
+          <p id="class-loan-delete-message">តើអ្នកពិតជាចង់លុបការខ្ចីតាមថ្នាក់នេះមែនទេ?</p>
+          <ul id="class-loan-delete-books" class="list-disc ml-5 mt-3 text-sm text-gray-600"></ul>
+        </div>
+        <p class="text-red-600 text-sm mb-6">ការធ្វើបែបនេះនឹងលុបកំណត់ត្រាខ្ចីរបស់សិស្សទាំងអស់ដែលពាក់ព័ន្ធ។</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeClassLoanDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="class-loan-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reading Log Delete Confirmation Modal -->
+    <div id="reading-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបកំណត់ត្រាចូលអាន</h3>
+        <p id="reading-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបកំណត់ត្រានេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeReadingDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="reading-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Location Delete Confirmation Modal -->
+    <div id="location-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបទីតាំង</h3>
+        <p id="location-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបទីតាំងនេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeLocationDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="location-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Location In Use Info Modal -->
+    <div id="location-inuse-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">សារ​ជូន​ដំណឹង</h3>
+        <p id="location-inuse-message" class="text-gray-700 mb-6">មិនអាចលុបទីតាំងនេះបានទេ ព្រោះកំពុងប្រើប្រាស់ដោយសៀវភៅ។</p>
+        <div class="flex justify-end">
+          <button type="button" onclick="window.closeLocationInUseModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md">យល់ព្រម</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Delete Confirmation Modal -->
+    <div id="student-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបព័ត៌មានសិស្ស</h3>
+        <p id="student-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបព័ត៌មានសិស្សនេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeStudentDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="student-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- School Name Delete Confirmation Modal (Settings) -->
+    <div id="schoolname-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបឈ្មោះសាលា</h3>
+        <p id="schoolname-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបឈ្មោះសាលាមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeSchoolNameDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="schoolname-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Academic Year Delete Confirmation Modal (Settings) -->
+    <div id="academicyear-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបឆ្នាំសិក្សា</h3>
+        <p id="academicyear-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបឆ្នាំសិក្សាមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeAcademicYearDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="academicyear-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Duplicate Selected Book Info Modal (Individual Loan) -->
+    <div id="loan-duplicate-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">សារ​ជូន​ដំណឹង</h3>
+        <p id="loan-duplicate-message" class="text-gray-700 mb-6">សៀវភៅនេះត្រូវបានជ្រើសរើសរួចហើយ។</p>
+        <div class="flex justify-end">
+          <button type="button" onclick="window.closeLoanDuplicateModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md">យល់ព្រម</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Grouped Return Modal (Individual) -->
     <div id="grouped-return-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-20">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -53,6 +187,17 @@
                 </div>
             </form>
         </div>
+    </div>
+
+    <!-- Class Selection Required Info Modal (Class Loans) -->
+    <div id="class-loan-select-required-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">សារ​ជូន​ដំណឹង</h3>
+        <p id="class-loan-select-required-message" class="text-gray-700 mb-6">សូមជ្រើសរើសថ្នាក់ដែលត្រូវបោះពុម្ពជាមុនសិន។</p>
+        <div class="flex justify-end">
+          <button type="button" onclick="window.closeClassLoanSelectRequiredModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md">យល់ព្រម</button>
+        </div>
+      </div>
     </div>
 
     <!-- Auth Container -->
@@ -217,7 +362,7 @@
                          <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
                             <h2 class="text-3xl font-bold text-gray-800 no-print">បញ្ជីសៀវភៅ</h2>
                             <div class="flex items-center">
-                                <input type="text" id="search-books" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md mr-4 no-print" placeholder="ស្វែងរកសៀវភៅ...">
+                                <input type="text" id="search-books" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md mr-4 no-print" placeholder="ស្វែងរកសៀវភៅ..." autofocus>
                                 <button onclick="window.printReport()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 mr-2 no-print"><i class="fas fa-print mr-2"></i>បោះពុម្ព</button>
                                 <button onclick="window.openBookModal()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 no-print"><i class="fas fa-plus mr-2"></i>បន្ថែម</button>
                             </div>
@@ -761,6 +906,10 @@
                 <input type="hidden" id="book-id">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                        <label for="isbn" class="block text-gray-700 mb-1">លេខ ISBN</label>
+                        <input type="text" id="isbn" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
                         <label for="title" class="block text-gray-700 mb-1">ចំណងជើង</label>
                         <input type="text" id="title" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                     </div>
@@ -768,24 +917,20 @@
                         <label for="author" class="block text-gray-700 mb-1">អ្នកនិពន្ធ/ថ្នាក់</label>
                         <input type="text" id="author" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
                     </div>
-                     <div>
-                        <label for="isbn" class="block text-gray-700 mb-1">លេខ ISBN</label>
-                        <input type="text" id="isbn" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <div>
+                        <label for="source" class="block text-gray-700 mb-1">ប្រភពសៀវភៅ</label>
+                        <input type="text" id="source" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="book-location-id" class="block text-gray-700 mb-1">ទីតាំងរក្សាទុក</label>
+                        <select id="book-location-id" class="w-full px-3 py-2 border border-gray-300 rounded-md"></select>
                     </div>
                     <div>
                         <label for="quantity" class="block text-gray-700 mb-1">ចំនួន</label>
                         <input type="number" id="quantity" class="w-full px-3 py-2 border border-gray-300 rounded-md" required min="0">
                     </div>
-                    <div>
-                        <label for="book-location-id" class="block text-gray-700 mb-1">ទីតាំងរក្សាទុក</label>
-                        <select id="book-location-id" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></select>
-                    </div>
-                    <div>
-                        <label for="source" class="block text-gray-700 mb-1">ប្រភពសៀវភៅ</label>
-                        <input type="text" id="source" class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                    </div>
                     <div class="md:col-span-2">
-                        <label for="book-url" class="block text-gray-700 mb-1">តំណភ្ជាប់សៀវភៅ (Book URL)</label>
+                        <label for="book-url" class="block text-gray-700 mb-1">តំណរូបសៀវភៅ</label>
                         <input type="url" id="book-url" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="https://example.com/book-page">
                     </div>
                 </div>

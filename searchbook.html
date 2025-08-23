@@ -375,6 +375,13 @@
         .subscribe();
     }
 
+    // After printing, return focus to the search box
+    window.addEventListener('afterprint', () => {
+      try {
+        if (searchInput) { searchInput.focus(); searchInput.select(); }
+      } catch (_) {}
+    });
+
     function getCoverUrl(book) {
       // Prefer explicit book_url if provided, then fall back to other known fields
       return book.book_url || book.cover_url || book.image_url || book.photo_url || book.cover || book.image || '';
