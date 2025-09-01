@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>កម្មវិធីមេរៀន Arduino & ESP8266</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Koulen&family=Noto+Serif+Khmer:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Serif Khmer', serif;
+        }
+        .koulen {
+            font-family: 'Koulen', cursive;
+        }
+        /* Custom scrollbar for better mobile look */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-200 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-sm h-[80vh] max-h-[900px] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+        <!-- App Header -->
+        <header id="app-header" class="bg-teal-600 text-white p-4 shadow-md flex items-center justify-between">
+            <button id="back-button" class="hidden text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <h1 id="header-title" class="text-xl koulen text-center flex-grow">វគ្គសិក្សា Arduino & ESP8266</h1>
+            <div class="w-6"></div> <!-- Spacer -->
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-4 bg-gray-50">
+            <!-- Lesson List View -->
+            <div id="lesson-list">
+                <!-- Lessons will be dynamically inserted here -->
+            </div>
+
+            <!-- Lesson Detail View -->
+            <div id="lesson-detail" class="hidden">
+                <h2 id="detail-title" class="text-2xl koulen text-teal-700 mb-2"></h2>
+                <div class="bg-teal-50 border-l-4 border-teal-500 p-3 rounded-r-lg mb-4">
+                    <h3 class="font-bold text-gray-800 mb-1">គោលបំណង៖</h3>
+                    <p id="detail-objective" class="text-gray-700"></p>
+                </div>
+                <div class="bg-gray-100 p-3 rounded-lg">
+                    <h3 class="font-bold text-gray-800 mb-2">ខ្លឹមសារមេរៀន៖</h3>
+                    <ul id="detail-content" class="list-disc list-inside space-y-2 text-gray-700">
+                        <!-- Content points will be here -->
+                    </ul>
+                </div>
+                <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg mt-4">
+                    <h3 class="font-bold text-gray-800 mb-1">✍️ អនុវត្តន៍ជាក់ស្តែង៖</h3>
+                    <p id="detail-practice" class="text-gray-700"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const lessons = [
+                {
+                    title: "មេរៀនទី១៖ ការណែនាំអំពី Arduino និងមូលដ្ឋានគ្រឹះអគ្គិសនី",
+                    objective: "ស្គាល់អំពី Arduino, ដំឡើងកម្មវិធី និងអាចសរសេរកូដបញ្ជា LED ជាលើកដំបូង។",
+                    content: [
+                        "តើអ្វីជា Microcontroller? តើ Arduino ជាអ្វី?",
+                        "ការស្គាល់សមាសភាគលើបន្ទះ Arduino UNO (Digital/Analog Pins, Power, USB)។",
+                        "ការដំឡើងកម្មវិធី Arduino IDE នៅលើកុំព្យូទ័រ។",
+                        "ការយល់ដឹងពីសៀគ្វីអគ្គិសនីសាមញ្ញ (វ៉ុល, ចរន្ត, រេស៊ីស្តង់) និងការប្រើប្រាស់ Breadboard។",
+                    ],
+                    practice: "បង្កើតកម្មវិធីដំបូង \"Blink\" – ធ្វើឲ្យ LED ភ្លឹបភ្លែត។"
+                },
+                {
+                    title: "មេរៀនទី២៖ ការសរសេរកូដ C++ មូលដ្ឋានសម្រាប់ Arduino",
+                    objective: "យល់ពីโครงสร้างនៃកូដ Arduino និងអាចប្រើប្រាស់អថេរនិងលក្ខខណ្ឌបាន។",
+                    content: [
+                        "ស្វែងយល់ពី `void setup()` និង `void loop()`។",
+                        "អថេរ (Variables) និងប្រភេទទិន្នន័យ (Data Types) ដូចជា `int`, `float`, `boolean`។",
+                        "ប្រតិបត្តិករគណិតវិទ្យា (+, -, *, /) និងប្រតិបត្តិករប្រៀបធៀប (==, <, >)។",
+                        "ការប្រើប្រាស់លក្ខខណ្ឌ `if...else` ដើម្បីធ្វើការសម្រេចចិត្ត។",
+                    ],
+                    practice: "បង្កើតភ្លើងសញ្ញាចរាចរណ៍សាមញ្ញដោយប្រើ LED ៣ ពណ៌។"
+                },
+                {
+                    title: "មេរៀនទី៣៖ ការប្រើប្រាស់ Digital Input និង Output",
+                    objective: "អាចអានសញ្ញាពីប៊ូតុង និងបញ្ជាឧបករណ៍ Output បានច្រើន។",
+                    content: [
+                        "ការប្រើប្រាស់ `pinMode()`, `digitalWrite()`, និង `digitalRead()`។",
+                        "ការតភ្ជាប់ប៊ូតុង (Push Button) ជា Input។",
+                        "ការយល់ដឹងពី Pull-up និង Pull-down resistors។",
+                        "ការប្រើប្រាស់ `Serial Monitor` ដើម្បីបង្ហាញទិន្នន័យ និងពិនិត្យកំហុស (Debug)។",
+                    ],
+                    practice: "សរសេរកូដចុចប៊ូតុងដើម្បីបើក/បិទភ្លើង LED។"
+                },
+                {
+                    title: "មេរៀនទី៤៖ ការប្រើប្រាស់ Analog Input និង PWM",
+                    objective: "អាចអានតម្លៃ Analog ពី Sensor និងគ្រប់គ្រងពន្លឺ LED បាន។",
+                    content: [
+                        "ភាពខុសគ្នារវាងសញ្ញា Analog និង Digital។",
+                        "ការអានតម្លៃពី Potentiometer (ឧបករណ៍ปรับค่าได้) ដោយប្រើ `analogRead()`។",
+                        "ការបង្កើតសញ្ញា Analog ក្លែងក្លាយ (PWM) ដោយប្រើ `analogWrite()`។",
+                    ],
+                    practice: "ប្រើ Potentiometer ដើម្បីปรับពន្លឺរបស់ LED ឲ្យភ្លឺខ្លាំងឬខ្សោយ។"
+                },
+                {
+                    title: "មេរៀនទី៥៖ ការធ្វើការជាមួយ Sensors និង Actuators",
+                    objective: "អាចប្រមូលទិន្នន័យពីពិភពខាងក្រៅ និងបញ្ជាឧបករណ៍ឲ្យមានសកម្មភាព។",
+                    content: [
+                        "Sensors: ការតភ្ជាប់ និងអានទិន្នន័យពី Sensor ពន្លឺ (LDR) និង Sensor សីតុណ្ហភាព/សំណើម (DHT11)។",
+                        "Actuators: ការបញ្ជាឧបករណ៍បង្កើតសំឡេង (Buzzer) និងម៉ូទ័រខ្នាតតូច (Servo Motor)។",
+                    ],
+                    practice: "បង្កើតប្រព័ន្ធមួយដែលបញ្ចេញសំឡេងនៅពេលសីតុណ្ហភាពឡើងខ្ពស់។"
+                },
+                {
+                    title: "មេរៀនទី៦៖ ការណែនាំអំពី ESP8266 (NodeMCU)",
+                    objective: "ស្គាល់បន្ទះ ESP8266 និងរៀបចំ Arduino IDE សម្រាប់ប្រើជាមួយវា។",
+                    content: [
+                        "តើ ESP8266 ជាអ្វី? ភាពខ្លាំងរបស់វា (ភ្ជាប់ Wi-Fi, ល្បឿនលឿន)។",
+                        "ការស្គាល់បន្ទះ NodeMCU (ESP-12E) និង Pinout របស់វា។",
+                        "ការដំឡើង Board Manager សម្រាប់ ESP8266 នៅក្នុង Arduino IDE។",
+                        "ការដំឡើង Driver (CH340/CP2102) សម្រាប់កុំព្យូទ័រ។",
+                    ],
+                    practice: "សាកល្បង Upload កូដ \"Blink\" ទៅកាន់ NodeMCU។"
+                },
+                {
+                    title: "មេរៀនទី៧៖ ការភ្ជាប់ ESP8266 ទៅកាន់បណ្តាញ Wi-Fi",
+                    objective: "អាចភ្ជាប់ NodeMCU ទៅកាន់ Internet តាមរយៈ Wi-Fi។",
+                    content: [
+                        "ការប្រើប្រាស់ Library `ESP8266WiFi.h`។",
+                        "ការសរសេរកូដដើម្បីភ្ជាប់ទៅកាន់ Access Point (AP) ដោយប្រើ SSID និង Password។",
+                        "ការពិនិត្យមើលស្ថានភាពនៃការតភ្ជាប់ និងការទទួលបាន IP Address។",
+                    ],
+                    practice: "សរសេរកូដភ្ជាប់ NodeMCU ទៅ Wi-Fi របស់អ្នក ហើយបង្ហាញ IP Address នៅលើ Serial Monitor។"
+                },
+                {
+                    title: "មេរៀនទី៨៖ ការបង្កើត Web Server សាមញ្ញ",
+                    objective: "អាចបង្កើត Web Page មួយដើម្បីបញ្ជាឧបករណ៍ពី Web Browser។",
+                    content: [
+                        "មូលដ្ឋានគ្រឹះនៃ Web Server។",
+                        "ការប្រើប្រាស់ Library `ESP8266WebServer.h`។",
+                        "ការបង្កើត Web Page សាមញ្ញដោយប្រើ HTML ដើម្បីបង្ហាញប៊ូតុងបញ្ជា។",
+                    ],
+                    practice: "បង្កើត Web Server ដើម្បីបើក/បិទ LED តាមរយៈទូរស័ព្ទដៃ ឬកុំព្យូទ័រដែលនៅក្នុងបណ្តាញ Wi-Fi តែមួយ។"
+                },
+                {
+                    title: "មេរៀនទី៩៖ ការបង្ហាញទិន្នន័យ Sensor នៅលើ Web Server",
+                    objective: "អាចអានទិន្នន័យពី Sensor ហើយបង្ហាញនៅលើ Web Page។",
+                    content: [
+                        "ការតភ្ជាប់ Sensor (ឧ. DHT11) ទៅកាន់ NodeMCU។",
+                        "ការអានទិន្នន័យ រួចបញ្ជូនទៅបង្ហាញនៅលើ Web Page។",
+                        "ការធ្វើឲ្យ Web Page ផ្ទុកទិន្នន័យឡើងវិញដោយស្វ័យប្រវត្តិ (Auto-Refresh)។",
+                    ],
+                    practice: "បង្កើត Web Page មួយដែលបង្ហាញពីសីតុណ្ហភាព និងសំណើមក្នុងបន្ទប់តាមពេលវេលាជាក់ស្តែង។"
+                },
+                {
+                    title: "មេរៀនទី១០៖ ការណែនាំអំពី IoT Platform និង MQTT",
+                    objective: "យល់ដឹងពីแนวคิดនៃ IoT Platform និងពិធីការสื่อสาร MQTT។",
+                    content: [
+                        "តើ Internet of Things (IoT) ជាអ្វី?",
+                        "ការស្គាល់ IoT Platform ដូចជា Blynk, Adafruit IO, ThingSpeak។",
+                        "ការយល់ដឹងពីពិធីការ MQTT (Publish & Subscribe model) ដែលជាស្តង់ដារសម្រាប់ IoT។",
+                    ],
+                    practice: "បង្កើតគណនីនៅលើ Blynk App និងស្វែងយល់ពី Widgets របស់វា។"
+                },
+                {
+                    title: "មេរៀនទី១១៖ ការអនុវត្តគម្រោង IoT ជាមួយ Blynk",
+                    objective: "អាចបញ្ជា និងតាមដានឧបករណ៍ពីគ្រប់ទីកន្លែងតាមរយៈទូរស័ព្ទដៃ។",
+                    content: [
+                        "ការដំឡើង Blynk Library នៅក្នុង Arduino IDE។",
+                        "ការសរសេរកូដដើម្បីភ្ជាប់ ESP8266 ទៅកាន់ Blynk Server ដោយប្រើ Auth Token។",
+                        "ការប្រើ Virtual Pins ដើម្បីបញ្ជូនទិន្នន័យរវាង App និងឧបករណ៍។",
+                    ],
+                    practice: "បង្កើត Dashboard នៅលើ Blynk ដើម្បីបញ្ជា LED និងបង្ហាញទិន្នន័យសីតុណ្ហភាពពី DHT11 sensor។"
+                },
+                {
+                    title: "មេរៀនទី១២៖ គម្រោងបញ្ចប់វគ្គ (Final Project)",
+                    objective: "យកចំណេះដឹងทั้งหมดមកបង្កើតគម្រោង IoT ផ្ទាល់ខ្លួនមួយ។",
+                    content: [
+                        "ការពិភាក្សា និងជ្រើសរើសគំនិតសម្រាប់គម្រោង។",
+                        "ឧទាហរណ៍គម្រោង៖ ប្រព័ន្ធស្រោចទឹករុក្ខជាតិอัตโนมัติ, ប្រព័ន្ធត្រួតពិនិត្យអាកាសធាតុ, ប្រព័ន្ធបញ្ជាឧបករណ៍អគ្គិសនីក្នុងផ្ទះ។",
+                        "ការរៀបចំផែនការ, ការសរសេរកូដ, ការដំឡើង និងការដោះស្រាយបញ្ហា។",
+                    ],
+                    practice: "សិស្សធ្វើការលើគម្រោងរបស់ខ្លួន និងធ្វើបទបង្ហាញនៅចុងបញ្ចប់នៃវគ្គ។"
+                },
+            ];
+
+            const lessonListContainer = document.getElementById('lesson-list');
+            const lessonDetailContainer = document.getElementById('lesson-detail');
+            const backButton = document.getElementById('back-button');
+            const headerTitle = document.getElementById('header-title');
+
+            // Elements for detail view
+            const detailTitle = document.getElementById('detail-title');
+            const detailObjective = document.getElementById('detail-objective');
+            const detailContent = document.getElementById('detail-content');
+            const detailPractice = document.getElementById('detail-practice');
+
+            function showListView() {
+                lessonListContainer.classList.remove('hidden');
+                lessonDetailContainer.classList.add('hidden');
+                backButton.classList.add('hidden');
+                headerTitle.textContent = 'វគ្គសិក្សា Arduino & ESP8266';
+            }
+
+            function showDetailView(index) {
+                const lesson = lessons[index];
+                
+                detailTitle.textContent = lesson.title;
+                detailObjective.textContent = lesson.objective;
+                detailPractice.textContent = lesson.practice;
+                
+                // Clear previous content
+                detailContent.innerHTML = '';
+                lesson.content.forEach(point => {
+                    const li = document.createElement('li');
+                    li.innerHTML = point; // Use innerHTML to render code tags correctly
+                    detailContent.appendChild(li);
+                });
+
+                lessonListContainer.classList.add('hidden');
+                lessonDetailContainer.classList.remove('hidden');
+                backButton.classList.remove('hidden');
+                const lessonNumber = `មេរៀនទី${index + 1}`;
+                headerTitle.textContent = lessonNumber;
+            }
+
+            // Populate lesson list
+            lessons.forEach((lesson, index) => {
+                const lessonCard = document.createElement('div');
+                lessonCard.className = 'bg-white p-4 rounded-lg shadow-sm mb-3 border border-gray-200 hover:shadow-md hover:border-teal-500 transition-all cursor-pointer';
+                
+                const lessonNumber = document.createElement('span');
+                lessonNumber.className = 'koulen text-lg text-teal-600';
+                lessonNumber.textContent = `មេរៀនទី${index + 1}`;
+                
+                const lessonTitle = document.createElement('h2');
+                lessonTitle.className = 'font-bold text-gray-800 mt-1';
+                lessonTitle.textContent = lesson.title.split('៖')[1].trim();
+
+                lessonCard.appendChild(lessonNumber);
+                lessonCard.appendChild(lessonTitle);
+
+                lessonCard.addEventListener('click', () => showDetailView(index));
+                lessonListContainer.appendChild(lessonCard);
+            });
+            
+            backButton.addEventListener('click', showListView);
+
+        });
+    </script>
+</body>
+</html>
