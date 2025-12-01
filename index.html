@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>បណ្ណាល័យខ្ញុំ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Koulen&family=Moul&family=Noto+Sans+Khmer:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Barcode Generation Library -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <!-- Excel Export Library (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Link to the external CSS file -->
+    <link rel="stylesheet" href="./styles.css?v=1.1">
+</head>
+<body class="bg-gray-100">
+    <!-- Print Header (Only visible for printing reports) -->
+    <div id="print-header">
+        <div class="print-header-content">
+            <div class="motto">
+                <p>ព្រះរាជាណាចក្រកម្ពុជា</p>
+                <p>ជាតិ សាសនា ព្រះមហាក្សត្រ</p>
+            </div>
+            <div class="school-name">
+                <span id="print-school-name"></span>
+            </div>
+            <div class="report-title">
+                <span id="print-report-title"></span>
+            </div>
+            <!-- NEW: Print Subtitle (for class loan report) -->
+            <div class="text-xs text-gray-700 font-semibold mt-2 hidden print-only" id="class-loan-report-subtitle"></div>
+         </div>
+    </div>
+
+    <!-- Book Delete Confirmation Modal -->
+    <div id="book-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុប</h3>
+        <p id="book-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបសៀវភៅនេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeBookDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="book-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loan Delete Confirmation Modal -->
+    <div id="loan-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុប</h3>
+        <p id="loan-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបកំណត់ត្រានេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeLoanDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="loan-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grouped Loan Delete Confirmation Modal (Individual Loans) -->
+    <div id="grouped-loan-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបការខ្ចីជាក្រុម</h3>
+        <p id="grouped-loan-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបការខ្ចីនេះទាំងស្រុងមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeGroupedLoanDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="grouped-loan-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grouped Class Loan Delete Confirmation Modal (Class Loans page) -->
+    <div id="class-loan-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបការខ្ចីតាមថ្នាក់</h3>
+        <div class="text-gray-700 mb-4">
+          <p id="class-loan-delete-message">តើអ្នកពិតជាចង់លុបការខ្ចីតាមថ្នាក់នេះមែនទេ?</p>
+          <ul id="class-loan-delete-books" class="list-disc ml-5 mt-3 text-sm text-gray-600"></ul>
+        </div>
+        <p class="text-red-600 text-sm mb-6">ការធ្វើបែបនេះនឹងលុបកំណត់ត្រាខ្ចីរបស់សិស្សទាំងអស់ដែលពាក់ព័ន្ធ។</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeClassLoanDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="class-loan-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reading Log Delete Confirmation Modal -->
+    <div id="reading-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបកំណត់ត្រាចូលអាន</h3>
+        <p id="reading-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបកំណត់ត្រានេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeReadingDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="reading-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Location Delete Confirmation Modal -->
+    <div id="location-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបទីតាំង</h3>
+        <p id="location-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបទីតាំងនេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeLocationDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="location-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Location In Use Info Modal -->
+    <div id="location-inuse-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">សារ​ជូន​ដំណឹង</h3>
+        <p id="location-inuse-message" class="text-gray-700 mb-6">មិនអាចលុបទីតាំងនេះបានទេ ព្រោះកំពុងប្រើប្រាស់ដោយសៀវភៅ។</p>
+        <div class="flex justify-end">
+          <button type="button" onclick="window.closeLocationInUseModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md">យល់ព្រម</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Delete Confirmation Modal -->
+    <div id="student-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបព័ត៌មានសិស្ស</h3>
+        <p id="student-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបព័ត៌មានសិស្សនេះមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeStudentDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="student-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- School Name Delete Confirmation Modal (Settings) -->
+    <div id="schoolname-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបឈ្មោះសាលា</h3>
+        <p id="schoolname-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបឈ្មោះសាលាមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeSchoolNameDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="schoolname-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Academic Year Delete Confirmation Modal (Settings) -->
+    <div id="academicyear-delete-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">បញ្ជាក់ការលុបឆ្នាំសិក្សា</h3>
+        <p id="academicyear-delete-message" class="text-gray-700 mb-6">តើអ្នកពិតជាចង់លុបឆ្នាំសិក្សាមែនទេ?</p>
+        <div class="flex justify-end space-x-2">
+          <button type="button" onclick="window.closeAcademicYearDeleteModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md">បោះបង់</button>
+          <button type="button" id="academicyear-delete-confirm-btn" class="bg-red-600 text-white px-4 py-2 rounded-md">លុប</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Duplicate Selected Book Info Modal (Individual Loan) -->
+    <div id="loan-duplicate-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">សារ​ជូន​ដំណឹង</h3>
+        <p id="loan-duplicate-message" class="text-gray-700 mb-6">សៀវភៅនេះត្រូវបានជ្រើសរើសរួចហើយ។</p>
+        <div class="flex justify-end">
+          <button type="button" onclick="window.closeLoanDuplicateModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md">យល់ព្រម</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grouped Return Modal (Individual) -->
+    <div id="grouped-return-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-20">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold mb-6">សងសៀវភៅតាមអ្នកខ្ចី</h3>
+            <form id="grouped-return-form-ind">
+                <div class="mb-4">
+                    <p><strong>អ្នកខ្ចី:</strong> <span id="grouped-return-borrower-name"></span></p>
+                    <p><strong>ថ្ងៃខ្ចី:</strong> <span id="grouped-return-loan-date-ind"></span></p>
+                </div>
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-700 mb-3">ជ្រើសរើសសៀវភៅដែលត្រូវសង:</h4>
+                    <div id="grouped-return-books-list-ind" class="space-y-3 max-h-60 overflow-y-auto border rounded-md p-3 bg-gray-50"></div>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" onclick="window.closeGroupedReturnModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">បោះបង់</button>
+                    <button type="submit" class="bg-teal-500 text-white px-4 py-2 rounded-md">រក្សាទុកការសង</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Class Selection Required Info Modal (Class Loans) -->
+    <div id="class-loan-select-required-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+      <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 class="text-xl font-bold mb-4 text-gray-900">សារ​ជូន​ដំណឹង</h3>
+        <p id="class-loan-select-required-message" class="text-gray-700 mb-6">សូមជ្រើសរើសថ្នាក់ដែលត្រូវបោះពុម្ពជាមុនសិន។</p>
+        <div class="flex justify-end">
+          <button type="button" onclick="window.closeClassLoanSelectRequiredModal()" class="bg-blue-600 text-white px-4 py-2 rounded-md">យល់ព្រម</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
+        <div class="w-full max-w-md bg-white p-8 rounded-lg shadow-lg">
+            <!-- Login Form -->
+            <div id="login-form-container">
+                <h2 class="text-3xl font-bold text-center mb-6 font-koulen">បណ្ណាល័យខ្ញុំ</h2>
+                <h2 class="text-2xl text-center mb-6 font-koulen">សូមបញ្ចូលព័ត៌មានដើម្បីប្រើប្រាស់ប្រព័ន្ធ</h2>
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label for="login-email" class="block text-gray-700 mb-1">អ៊ីមែល</label>
+                        <input type="email" id="login-email" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="login-password" class="block text-gray-700 mb-1">ពាក្យសម្ងាត់</label>
+                        <input type="password" id="login-password" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition-colors">ចូលប្រើ</button>
+                    <p id="login-error" class="text-red-500 text-sm text-center mt-4"></p>
+                    <div class="mt-4">
+                        <a href="admin.html" class="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">បង្កើតគណនីថ្មី</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app-container" class="hidden">
+        <div class="flex h-screen bg-gray-200">
+            <!-- Sidebar -->
+            <div id="sidebar" class="w-64 bg-gray-800 text-white flex flex-col no-print">
+                <div class="p-4 border-b border-gray-700">
+                    <h1 class="text-2xl font-bold text-center font-moul">បណ្ណាល័យខ្ញុំ</h1>
+                    <p id="sidebar-school-name" class="text-sm text-center font-moul text-gray-300 mt-1"></p>
+                </div>
+                <nav class="flex-1 px-2 py-4 space-y-2">
+                    <a href="#" data-page="home" class="nav-link flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md">
+                        <i class="fas fa-home mr-3"></i> ទំព័រដើម
+                    </a>
+                    <a href="#" data-page="books" class="nav-link flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md">
+                        <i class="fas fa-book mr-3"></i> គ្រប់គ្រងសៀវភៅ
+                    </a>
+                    <a href="#" data-page="loans" class="nav-link flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md">
+                        <i class="fas fa-user mr-3"></i> ខ្ចី-សង បុគ្គល
+                    </a>
+                     <a href="#" data-page="class-loans" class="nav-link flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md">
+                        <i class="fas fa-users mr-3"></i> ខ្ចី-សង តាមថ្នាក់
+                    </a>
+                    <a href="#" data-page="reading-log" class="nav-link flex items-center px-4 py-2 text-gray-100 bg-gray-900 rounded-md">
+                        <i class="fas fa-book-open mr-3"></i> ចូលអាន
+                    </a>
+                    <a href="#" data-page="locations" class="nav-link flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md">
+                        <i class="fas fa-map-marker-alt mr-3"></i> ទីតាំងរក្សាទុកសៀវភៅ
+                    </a>
+                    <a href="#" data-page="students" class="nav-link flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md">
+                        <i class="fas fa-user-graduate mr-3"></i> ទិន្នន័យសិស្ស
+                    </a>
+                    <a href="stcard.html" class="nav-link flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md">
+                        <i class="fas fa-id-card mr-3"></i> កាតសិស្ស
+                    </a>
+                    <a href="#" data-page="settings" class="nav-link flex items-center px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md">
+                        <i class="fas fa-cog mr-3"></i> ការកំណត់
+                    </a>
+                </nav>
+                <!-- Credits Section -->
+                <div class="p-2 border-t border-gray-700 text-center text-xs text-gray-400 no-print">
+                    <p>កម្មវិធីនេះសរសេរដោយ លោកគ្រូ វង្ស សាណូវុទ្ធ</p>
+                    <p class="mt-1">ឧបត្ថម្ភការផលិតដោយ៖ អង្គការហ្គូដណេប៊ឺសកម្ពុជា</p>
+                </div>
+                <div class="p-2 border-t border-gray-700 text-center text-xs text-gray-400 no-print">
+                    <p id="user-email" class="truncate"></p>
+                    <button id="logout-btn" class="w-full mt-2 bg-red-500 text-white py-1 rounded hover:bg-red-600">ចាកចេញ</button>
+                </div>
+            </div>
+
+            <!-- Main content -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                    <!-- Home Page -->
+                    <div id="page-home" class="page">
+                        <h2 class="text-3xl font-bold mb-6 text-gray-800">ផ្ទាំងគ្រប់គ្រង</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <i class="fas fa-book text-5xl text-blue-500 mr-6"></i>
+                                <div>
+                                    <p class="text-lg text-gray-600">ប្រភេទសៀវភៅបានចុះក្នុងបញ្ជី</p>
+                                    <p id="total-books" class="text-4xl font-bold text-gray-800">0</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <i class="fas fa-layer-group text-5xl text-purple-500 mr-6"></i>
+                                <div>
+                                    <p class="text-lg text-gray-600">ចំនួនសៀវភៅសរុប</p>
+                                    <p id="total-quantity" class="text-4xl font-bold text-gray-800">0</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <i class="fas fa-hand-holding-hand text-5xl text-green-500 mr-6"></i>
+                                <div>
+                                    <p class="text-lg text-gray-600">កំពុងខ្ចី</p>
+                                    <p id="total-loans" class="text-4xl font-bold text-gray-800">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Library Software Advertisement + Reading Stats -->
+                        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Left: Advertisement -->
+                            <div class="bg-white p-6 rounded-lg shadow-md text-center">
+                                <h3 class="text-xl font-bold text-gray-800 mb-2">កម្មវិធីបណ្ណាល័យខ្ញុំ</h3>
+                                <h3 class="text-lg font-semibold text-gray-700 mb-3">ឧបត្ថម្ភការផលិតដោយ៖</h3>
+                                <img src="gnclogo.png" alt="GNC Logo" class="mx-auto max-w-xs h-auto">
+                                <p>   </p> 
+                                <h4 class="text-xl font-semibold text-gray-800 mb-2">ឆ្នាំ២០២៥</h4>
+                            </div>
+                            <!-- Right: Reading Log Gender Stats -->
+                            <div class="bg-white p-6 rounded-lg shadow-md">
+                                <h3 class="text-xl font-bold text-gray-800 mb-1">ស្ថិតិការចូលអានសៀវភៅ</h3>
+                                <p class="text-sm text-gray-600 mb-4">សរុប • ប្រុស • ស្រី</p>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-700">សរុប</span>
+                                        <span id="home-readings-total" class="font-bold">0</span>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-gray-700">ប្រុស</span>
+                                            <span id="home-readings-male" class="font-semibold">0</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded h-2">
+                                            <div id="home-readings-male-bar" class="bg-blue-500 h-2 rounded" style="width:0%"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-gray-700">ស្រី</span>
+                                            <span id="home-readings-female" class="font-semibold">0</span>
+                                        </div>
+                                        <div class="w-full bg-gray-200 rounded h-2">
+                                            <div id="home-readings-female-bar" class="bg-pink-500 h-2 rounded" style="width:0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-3 border-t border-gray-200">
+                                    <p id="home-top-book" class="text-sm text-gray-600 text-center">មិនទាន់មានទិន្នន័យ</p>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- Individual Loans Summary List (Home) -->
+                        <div class="mt-8 bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">អ្នកមិនទាន់សងសៀវភៅ៖</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div id="home-loans-text-left" class="text-sm text-red-800 whitespace-pre-line"></div>
+                                <div id="home-loans-text-right" class="text-sm text-red-800 whitespace-pre-line"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Book Management Page -->
+                    <div id="page-books" class="page hidden">
+                         <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                            <h2 class="text-3xl font-bold text-gray-800 no-print">បញ្ជីសៀវភៅ</h2>
+                            <div class="flex items-center">
+                                                                <input type="text" id="search-books" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md mr-4 no-print" placeholder="ស្វែងរកសៀវភៅ..." autofocus>
+                                                                <select id="author-filter" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md mr-4 no-print">
+                                    <option value="">អ្នកនិពន្ធទាំងអស់</option>
+                                    <!-- Authors will be populated dynamically -->
+                                </select>
+                                <!-- Import Books from Excel -->
+                                <input type="file" id="book-excel-file-input" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden">
+                                <button id="upload-book-excel-btn" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 mr-2 no-print"><i class="fas fa-file-upload mr-2"></i>នាំចូល Excel</button>
+                                <button onclick="window.printReport()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 mr-2 no-print"><i class="fas fa-print mr-2"></i>បោះពុម្ព</button>
+                                <a href="bookcard.html" class="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600 mr-2 no-print"><i class="fas fa-id-card mr-2"></i>កាតសំគាល់សៀវភៅ</a>
+                                <button onclick="window.openBookModal()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 no-print"><i class="fas fa-plus mr-2"></i>បន្ថែម</button>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+                            <div id="books-print-area">
+                                <h2 class="print-area text-2xl font-bold mb-4 text-center"></h2>
+                                <table class="w-full text-left whitespace-no-wrap">
+                                    <thead class="bg-gray-200">
+                                        <tr>
+                                            <th class="p-3">ល.រ</th>
+                                            <th class="p-3">ចំណងជើង</th>
+                                            <th class="p-3">អ្នកនិពន្ធ/ថ្នាក់</th>
+                                            <th class="p-3">ISBN</th>
+                                            <th class="p-3">ចំនួនសរុប</th>
+                                            <th class="p-3">ចំនួននៅសល់</th>
+                                            <th class="p-3">ទីតាំង</th>
+                                            <th class="p-3">ប្រភព</th>
+                                            <th class="p-3 no-print">សកម្មភាព</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="book-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Individual Loan Management Page -->
+                    <div id="page-loans" class="page hidden">
+                        <!-- Section for creating new individual loans -->
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4 no-print">បង្កើតកំណត់ត្រាខ្ចី-សង បុគ្គល</h2>
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6 no-print">
+                            <form id="loan-form">
+                                <input type="hidden" id="loan-borrower-gender">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                                    <!-- ISBN Input -->
+                                    <div>
+                                        <label for="loan-isbn-input" class="block text-gray-700 mb-1 font-medium">វាយបញ្ចូល/ស្កេន ISBN</label>
+                                        <input type="text" id="loan-isbn-input" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="ស្កេន Barcode..." autocomplete="off">
+                                        <p id="loan-book-error" class="text-xs text-red-500 mt-1"></p>
+                                        <!-- Book Selection Dropdown -->
+                                        <div class="mt-2">
+                                            <label for="loan-book-select" class="block text-gray-700 mb-1 text-sm">ឬជ្រើសរើសសៀវភៅពីបញ្ជី</label>
+                                            <select id="loan-book-select" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                                                <option value="">-- ជ្រើសរើសសៀវភៅ --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <!-- Book Title Display -->
+                                    <div>
+                                        <label for="loan-book-title-display" class="block text-gray-700 mb-1 font-medium">ឈ្មោះសៀវភៅ</label>
+                                        <input type="text" id="loan-book-title-display" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-200" readonly>
+                                        <input type="hidden" id="loan-book-id">
+                                    </div>
+                                    <!-- Student ID Input -->
+                                    <div>
+                                        <label for="loan-student-id-input" class="block text-gray-700 mb-1 font-medium">វាយបញ្ចូល/ស្កេន អត្តលេខសិស្ស</label>
+                                        <input type="text" id="loan-student-id-input" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="ស្កេនកាតសិស្ស..." autocomplete="off">
+                                        <p id="loan-student-error" class="text-xs text-red-500 mt-1"></p>
+                                    </div>
+                                    <!-- Borrower Name Display -->
+                                    <div>
+                                        <label for="loan-borrower-name-display" class="block text-gray-700 mb-1 font-medium">ឈ្មោះអ្នកខ្ចី</label>
+                                        <input type="text" id="loan-borrower-name-display" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                                    </div>
+                                </div>
+                                
+                                <!-- Selected Books List -->
+                                <div class="mt-4">
+                                    <h4 class="font-medium text-gray-700 mb-2">សៀវភៅបានជ្រើសរើស៖</h4>
+                                    <div id="loan-selected-books-list" class="bg-gray-50 p-3 rounded-md border min-h-[60px]">
+                                        <p class="text-gray-500 text-sm" id="loan-no-books-message">មិនទាន់បានជ្រើសរើសសៀវភៅទេ</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <button type="submit" class="w-full md:w-auto bg-green-500 text-white px-6 py-2 rounded-md hover:bg-green-600"><i class="fas fa-plus mr-2"></i>បង្កើតការខ្ចី</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Section for loan history -->
+                        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                            <h3 class="text-xl font-bold text-gray-800 no-print">ប្រវត្តិនៃការខ្ចី-សង បុគ្គល</h3>
+                            <div class="flex items-center">
+                                <input type="text" id="search-loans" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md mr-4 no-print" placeholder="ស្វែងរកការខ្ចី...">
+                                <button onclick="window.printReport()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 no-print"><i class="fas fa-print mr-2"></i>បោះពុម្ព</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Filter and Summary Section -->
+                        <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <div>
+                                    <label for="loan-filter-start-date" class="block text-sm font-medium text-gray-700">ពីថ្ងៃ</label>
+                                    <input type="date" id="loan-filter-start-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="loan-filter-end-date" class="block text-sm font-medium text-gray-700">ដល់ថ្ងៃ</label>
+                                    <input type="date" id="loan-filter-end-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button id="loan-filter-btn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 w-full">ត្រង</button>
+                                    <button id="loan-reset-btn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 w-full">សម្អាត</button>
+                                </div>
+                            </div>
+                            <div id="loan-summary" class="mt-4 text-center font-semibold text-gray-700"></div>
+                        </div>
+                        
+                        <!-- Loan List Table -->
+                        <div class="bg-white p-4 rounded-lg shadow-md">
+                            <div id="loans-print-area">
+                                <h2 class="print-area text-2xl font-bold mb-4 text-center"></h2>
+                                <table class="w-full text-left">
+                                    <thead class="bg-gray-200">
+                                        <tr>
+                                            <th id="loan-sort-serial" class="p-3 cursor-pointer select-none">ល.រ</th>
+                                            <th id="loan-sort-borrower" class="p-3 cursor-pointer select-none">ឈ្មោះអ្នកខ្ចី</th>
+                                            <th id="loan-sort-title" class="p-3 cursor-pointer select-none">ចំណងជើងសៀវភៅ</th>
+                                            <th id="loan-sort-loan-date" class="p-3 cursor-pointer select-none">ថ្ងៃខ្ចី</th>
+                                            <th id="loan-sort-return-date" class="p-3 cursor-pointer select-none">ថ្ងៃសង</th>
+                                            <th id="loan-sort-status" class="p-3 cursor-pointer select-none">ស្ថានភាព</th>
+                                            <th class="p-3 no-print">សកម្មភាព</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="loan-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Class Loan Management Page -->
+                    <div id="page-class-loans" class="page hidden">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4 no-print">បង្កើតកំណត់ត្រាខ្ចី-សង តាមថ្នាក់</h2>
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6 no-print">
+                            <form id="class-loan-form">
+                                <!-- START: MODIFIED FORM LAYOUT -->
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                                    <!-- ISBN Input -->
+                                    <div>
+                                        <label for="class-loan-isbn-input" class="block text-gray-700 mb-1 font-medium">វាយបញ្ចូល/ស្កេន ISBN</label>
+                                        <input type="text" id="class-loan-isbn-input" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="ស្កេន Barcode..." autocomplete="off">
+                                        <!-- Book Selection Dropdown -->
+                                        <div class="mt-2">
+                                            <label for="class-loan-book-select" class="block text-gray-700 mb-1 text-sm">ឬជ្រើសរើសសៀវភៅពីបញ្ជី</label>
+                                            <select id="class-loan-book-select" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                                                <option value="">-- ជ្រើសរើសសៀវភៅ --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <!-- Book Title Display -->
+                                    <div>
+                                        <label for="class-loan-book-title-display" class="block text-gray-700 mb-1 font-medium">ឈ្មោះសៀវភៅ</label>
+                                        <input type="text" id="class-loan-book-title-display" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-200" readonly>
+                                        <input type="hidden" id="class-loan-book-id">
+                                        <p id="class-loan-book-error" class="text-xs text-red-500 mt-1"></p>
+                                    </div>
+                                    <!-- Class Select with Student Count -->
+                                    <div class="flex items-end gap-2">
+                                        <div class="flex-grow">
+                                            <label for="class-loan-class-select" class="block text-gray-700 mb-1 font-medium">ជ្រើសរើសថ្នាក់</label>
+                                            <select id="class-loan-class-select" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></select>
+                                        </div>
+                                        <p id="class-info-text" class="text-sm text-blue-600 font-semibold pb-2 whitespace-nowrap"></p>
+                                    </div>
+                                </div>
+
+                                <!-- Scanned Books List -->
+                                <div class="mt-4">
+                                    <h4 class="font-medium">សៀវភៅបានស្កេន៖</h4>
+                                    <ul id="class-loan-scanned-books-list" class="list-disc list-inside mt-2 text-gray-700">
+                                        <!-- Scanned books will appear here -->
+                                    </ul>
+                                </div>
+
+                                <!-- Student List Container -->
+                                <div id="class-loan-student-list-container" class="mt-4 bg-gray-50 p-4 rounded-md border hidden max-h-60 overflow-y-auto">
+                                    <!-- Student list with checkboxes will be dynamically inserted here -->
+                                </div>
+
+                                <!-- Loan Quantity Display & Submit Button -->
+                                <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+                                    <div>
+                                        <label for="class-loan-quantity" class="block text-gray-700 mb-1 font-medium">ចំនួនខ្ចី</label>
+                                        <input type="number" id="class-loan-quantity" class="w-32 px-3 py-2 border border-gray-300 rounded-md bg-gray-200" readonly>
+                                    </div>
+                                    <button type="submit" class="bg-cyan-500 text-white px-6 py-2 rounded-md hover:bg-cyan-600"><i class="fas fa-users mr-2"></i>បង្កើតការខ្ចី</button>
+                                </div>
+                                <!-- END: MODIFIED FORM LAYOUT -->
+                            </form>
+                        </div>
+                        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                            <h3 class="text-xl font-bold text-gray-800 no-print">ប្រវត្តិនៃការខ្ចីតាមថ្នាក់</h3>
+                            <div class="flex items-center">
+                                <button onclick="window.printReport()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 no-print mr-2"><i class="fas fa-print mr-2"></i>បោះពុម្ពបញ្ជីខ្ចីតាមថ្នាក់</button>
+                                <!-- NEW: Button to print student list for class loans -->
+                                <button id="print-class-loan-list-btn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 no-print"><i class="fas fa-print mr-2"></i>បោះពុម្ពបញ្ជីឈ្មោះសិស្សខ្ចីតាមថ្នាក់</button>
+                            </div>
+                        </div>
+                        <!-- Filter Section -->
+                        <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <div class="md:col-span-2">
+                                    <label for="class-loan-filter-select" class="block text-sm font-medium text-gray-700">ត្រងតាមថ្នាក់</label>
+                                    <select id="class-loan-filter-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                                </div>
+                                <div>
+                                    <button id="class-loan-reset-btn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 w-full">បង្ហាញទាំងអស់</button>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="bg-white p-4 rounded-lg shadow-md">
+                            <div id="class-loans-print-area">
+                                <h2 class="print-area text-2xl font-bold mb-4 text-center"></h2>
+                                <table class="w-full text-left">
+                                    <thead class="bg-gray-200">
+                                        <tr>
+                                            <th class="p-3">#</th>
+                                            <th class="p-3">ថ្នាក់</th>
+                                            <th class="p-3">សៀវភៅ</th>
+                                            <th class="p-3">ថ្ងៃខ្ចី</th>
+                                            <th class="p-3">ស្ថានភាពសង</th>
+                                            <th class="p-3 no-print">សកម្មភាព</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="class-loan-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- NEW: Print Area for Class Loan Students -->
+                        <div id="class-loan-students-print-area" class="print-area">
+                             <h2 class="print-area text-2xl font-bold mb-4 text-center"></h2>
+                             <div id="class-loan-students-table-container"></div>
+                             <!-- Summary section under the table -->                             
+                        </div>
+                    </div>
+                    
+                    <!-- Reading Log Page -->
+                    <div id="page-reading-log" class="page hidden">
+                        <div class="flex items-center justify-between mb-4 no-print">
+                            <h2 class="text-3xl font-bold text-gray-800">កត់ត្រាការចូលអាន</h2>
+                            <a href="searchbook.html" class="inline-flex items-center bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 text-sm font-semibold">
+                                <i class="fa-solid fa-bolt mr-2"></i>
+                                ទៅទំព័រចូលអានរហ័ស
+                            </a>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md mb-6 no-print">
+                            <form id="reading-log-form">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label for="reading-log-student-id" class="block text-gray-700 mb-1 font-medium">ស្កេនអត្តលេខសិស្ស</label>
+                                        <input type="text" id="reading-log-student-id" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="ស្កេនកាតសិស្ស..." autocomplete="off" required>
+                                        <p id="reading-log-student-error" class="text-xs text-red-500 mt-1"></p>
+                                    </div>
+                                    <div class="md:col-span-2">
+                                        <label for="reading-log-student-name" class="block text-gray-700 mb-1 font-medium">ឈ្មោះសិស្ស</label>
+                                        <input type="text" id="reading-log-student-name" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-200" readonly>
+                                        <input type="hidden" id="reading-log-student-obj-id">
+                                    </div>
+                                    <div class="md:col-span-3">
+                                        <label for="reading-log-isbn-input" class="block text-gray-700 mb-1 font-medium">ស្កេន ISBN សៀវភៅ</label>
+                                        <input type="text" id="reading-log-isbn-input" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="ស្កេនសៀវភៅម្តងមួយ..." autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <h4 class="font-medium">សៀវភៅបានស្កេន៖</h4>
+                                    <ul id="scanned-books-list" class="list-disc list-inside mt-2 text-gray-700">
+                                        <!-- Scanned books will appear here -->
+                                    </ul>
+                                </div>
+                                <div class="flex justify-end mt-6">
+                                    <button type="button" onclick="window.clearReadingLogForm()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">សម្អាត</button>
+                                    <button type="submit" class="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600">រក្សាទុកការចូលអាន</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                            <h3 class="text-xl font-bold text-gray-800 no-print">ប្រវត្តិនៃការចូលអាន</h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="window.printReport()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 no-print"><i class="fas fa-print mr-2"></i>បោះពុម្ពលម្អិត</button>
+                                <button onclick="window.printReadingLogGrouped()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 no-print"><i class="fas fa-print mr-2"></i>បោះពុម្ពសរុបតាមសៀវភៅ</button>
+                            </div>
+                        </div>
+                        <!-- Filter and Summary Section -->
+                        <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <div>
+                                    <label for="reading-log-filter-start-date" class="block text-sm font-medium text-gray-700">ពីថ្ងៃ</label>
+                                    <input type="date" id="reading-log-filter-start-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="reading-log-filter-end-date" class="block text-sm font-medium text-gray-700">ដល់ថ្ងៃ</label>
+                                    <input type="date" id="reading-log-filter-end-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button id="reading-log-filter-btn" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 w-full">ត្រង</button>
+                                    <button id="reading-log-reset-btn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 w-full">សម្អាត</button>
+                                </div>
+                            </div>
+                             <div id="reading-log-summary" class="mt-4 text-center font-semibold text-gray-700"></div>
+                        </div>
+                        <!-- Grouped by Book: Reading Log -->
+                        <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+                            <div id="reading-log-grouped-area" class="mt-2">
+                                <h3 class="text-xl font-bold text-gray-800 mb-3">សរុបតាមសៀវភៅ</h3>
+                                <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+                                    <table class="w-full text-left">
+                                        <thead class="bg-gray-200">
+                                            <tr>
+                                                <th class="p-3">#</th>
+                                                <th class="p-3">ចំណងជើងសៀវភៅ</th>
+                                                <th class="p-3">ឈ្មោះសិស្ស (ចំនួនអាន)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="reading-log-grouped-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div id="reading-log-print-area" class="mt-8">
+                                <h2 class="print-area text-2xl font-bold mb-4 text-center"></h2>
+                                <table class="w-full text-left">
+                                    <thead class="bg-gray-200">
+                                        <tr>
+                                            <th class="p-3">#</th>
+                                            <th class="p-3 no-wrap">កាលបរិច្ឆេទ</th>
+                                            <th class="p-3">ឈ្មោះសិស្ស</th>
+                                            <th id="reading-sort-title" class="p-3 cursor-pointer select-none">សៀវភៅបានអាន</th>
+                                            <th class="p-3 no-print">សកម្មភាព</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reading-log-history"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location Management Page -->
+                    <div id="page-locations" class="page hidden">
+                        <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+                            <h2 class="text-3xl font-bold text-gray-800 no-print">គ្រប់គ្រងទីតាំងរក្សាទុកសៀវភៅ</h2>
+                            <div class="flex items-center">
+                                <input type="text" id="search-locations" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md mr-4 no-print" placeholder="ស្វែងរកទីតាំង...">
+                                <!-- Import Locations from Excel -->
+                                <input type="file" id="location-excel-file-input" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden">
+                                <button id="upload-location-excel-btn" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 mr-2 no-print"><i class="fas fa-file-upload mr-2"></i>នាំចូល Excel</button>
+                                <button onclick="window.printReport()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 mr-2 no-print"><i class="fas fa-print mr-2"></i>បោះពុម្ព</button>
+                                <button onclick="window.openLocationModal()" class="bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600 no-print"><i class="fas fa-plus mr-2"></i>បន្ថែម</button>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-md">
+                            <div id="locations-print-area">
+                                <h2 class="print-area text-2xl font-bold mb-4 text-center"></h2>
+                                <table class="w-full text-left">
+                                    <thead class="bg-gray-200">
+                                        <tr>
+                                            <th class="p-3">#</th>
+                                            <th class="p-3">ឈ្មោះទីតាំង</th>
+                                            <th class="p-3">ប្រភពធ្នើ</th>
+                                            <th class="p-3">ឆ្នាំ</th>
+                                            <th class="p-3 no-print">សកម្មភាព</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="location-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Student Data Page -->
+                    <div id="page-students" class="page hidden">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-4 no-print">ទិន្នន័យសិស្ស</h2>
+                        <div class="bg-white p-4 rounded-lg shadow-md mb-6 no-print">
+                            <h3 class="text-xl font-bold mb-2">នាំចូលទិន្នន័យសិស្ស</h3>
+                            <!-- Excel Upload Row -->
+                            <div class="mt-3 p-3 rounded-md border-2 border-dashed border-gray-300 bg-gray-50">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <i class="fas fa-file-csv text-gray-600"></i>
+                                    <span class="text-sm text-gray-700">នាំចូលដោយប្រើឯកសារ Excel:</span>
+                                    <input type="file" id="csv-file-input" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden">
+                                    <button id="upload-csv-btn" class="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800"><i class="fas fa-file-upload mr-2"></i>ជ្រើសរើស Excel</button>
+                                    <a href="./ឈ្មោះសិស្សបណ្ណាល័យ.xlsx" download class="ml-auto inline-flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                                        <i class="fas fa-file-excel mr-2"></i>ទាញយកគំរូឯកសារ Excel
+                                    </a>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">គំរូចំណងជើងឯកសារ Excel របស់អ្នកត្រូវមានដូចជា៖ ល.រ, អត្តលេខ, នាមត្រកូល, នាមខ្លួន, ភេទ, ថ្នាក់, ថ្ងៃខែឆ្នាំកំណើត, រូបថត URL</p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap justify-between items-start mb-6 gap-4">
+                            <div class="flex items-start">
+                                <h3 class="text-xl font-bold text-gray-800 no-print">បញ្ជីសិស្ស</h3>
+                                <div id="duplicate-student-list" class="text-red-500 text-sm ml-6"></div>
+                            </div>
+                            <div class="flex items-center">
+                                <!-- START: NEW CLASS FILTER DROPDOWN -->
+                                <select id="student-class-filter" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md mr-4 no-print"></select>
+                                <!-- END: NEW CLASS FILTER DROPDOWN -->
+                                <input type="text" id="search-students" class="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-md mr-4 no-print" placeholder="ស្វែងរកសិស្ស...">
+                                <button onclick="window.printReport()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 mr-2 no-print"><i class="fas fa-print mr-2"></i>បោះពុម្ព</button>
+                                <button onclick="window.openStudentModal()" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 no-print"><i class="fas fa-plus mr-2"></i>បន្ថែមសិស្ស</button>
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow-md overflow-x-auto">
+                            <div id="students-print-area">
+                                <h2 class="print-area text-2xl font-bold mb-4 text-center"></h2>
+                                <table class="w-full text-left whitespace-no-wrap">
+                                    <thead class="bg-gray-200">
+                                        <tr id="student-list-header">
+                                            <!-- Headers will be generated dynamically -->
+                                        </tr>
+                                    </thead>
+                                    <tbody id="student-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <!-- Settings Page -->
+                    <div id="page-settings" class="page hidden">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-6">ការកំណត់</h2>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <!-- Left Column: Settings -->
+                            <div class="space-y-8">
+                                <!-- General Info Section -->
+                                <div class="bg-white p-6 rounded-lg shadow-md">
+                                    <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">ព័ត៌មានទូទៅ</h3>
+                                    <div class="space-y-4">
+                                        <!-- School Name -->
+                                        <div>
+                                            <label for="school-name-input" class="block text-sm font-medium text-gray-700">ឈ្មោះសាលា</label>
+                                            <div id="school-name-container" class="mt-1 flex items-center gap-2 flex-nowrap">
+                                                <input type="text" id="school-name-input" class="flex-grow block w-full rounded-md border-gray-300 shadow-sm">
+                                                <p id="school-name-display" class="hidden flex-grow font-semibold text-lg"></p>
+                                                <button id="save-school-name-btn" class="shrink-0 whitespace-nowrap bg-blue-500 text-white px-3 py-2 text-sm rounded-md hover:bg-blue-600">រក្សាទុក</button>
+                                                <button id="edit-school-name-btn" class="hidden shrink-0 whitespace-nowrap bg-yellow-500 text-white px-3 py-2 text-sm rounded-md hover:bg-yellow-600">កែប្រែ</button>
+                                                <button id="delete-school-name-btn" class="hidden shrink-0 whitespace-nowrap bg-red-500 text-white px-3 py-2 text-sm rounded-md hover:bg-red-600">លុប</button>
+                                            </div>
+                                        </div>
+                                        <!-- Academic Year -->
+                                        <div>
+                                            <label for="academic-year-input" class="block text-sm font-medium text-gray-700">ឆ្នាំសិក្សា</label>
+                                            <div id="academic-year-container" class="mt-1 flex items-center gap-2 flex-nowrap">
+                                                <input type="text" id="academic-year-input" class="flex-grow block w-full rounded-md border-gray-300 shadow-sm" placeholder="YYYY-YYYY">
+                                                <p id="academic-year-display" class="hidden flex-grow font-semibold text-lg"></p>
+                                                <button id="save-academic-year-btn" class="shrink-0 whitespace-nowrap bg-blue-500 text-white px-3 py-2 text-sm rounded-md hover:bg-blue-600">រក្សាទុក</button>
+                                                <button id="edit-academic-year-btn" class="hidden shrink-0 whitespace-nowrap bg-yellow-500 text-white px-3 py-2 text-sm rounded-md hover:bg-yellow-600">កែប្រែ</button>
+                                                <button id="delete-academic-year-btn" class="hidden shrink-0 whitespace-nowrap bg-red-500 text-white px-3 py-2 text-sm rounded-md hover:bg-red-600">លុប</button>
+                                            </div>
+                                        </div>
+                                        <!-- Principal Seal -->
+                                        <div>
+                                            <label for="seal-image-url" class="block text-sm font-medium text-gray-700">ត្រានាយកសាលា (URL)</label>
+                                            <div class="mt-1 flex items-center gap-4">
+                                                <div class="flex-grow">
+                                                    <input type="url" id="seal-image-url" class="block w-full rounded-md border-gray-300 shadow-sm" placeholder="https://example.com/seal.png">
+                                                    <button id="save-seal-url-btn" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">រក្សាទុក URL</button>
+                                                </div>
+                                                <img id="seal-image-preview" src="https://placehold.co/100x100/e2e8f0/e2e8f0?text=Preview" alt="Seal Preview" class="w-24 h-24 object-contain border rounded-md bg-gray-100">
+                                            </div>
+                                        </div>
+                                        <!-- Card Background -->
+                                        <div>
+                                            <label for="card-bg-url" class="block text-sm font-medium text-gray-700">ផ្ទៃខាងក្រោយកាត (URL)</label>
+                                            <div class="mt-1 flex items-center gap-4">
+                                                <div class="flex-grow">
+                                                    <input type="url" id="card-bg-url" class="block w-full rounded-md border-gray-300 shadow-sm" placeholder="https://example.com/background.png">
+                                                    <button id="save-card-bg-btn" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">រក្សាទុក URL</button>
+                                                </div>
+                                                <img id="card-bg-preview" src="https://placehold.co/100x100/e2e8f0/e2e8f0?text=Preview" alt="Card BG Preview" class="w-24 h-24 object-contain border rounded-md bg-gray-100">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Change Password Section -->
+                                <div class="bg-white p-6 rounded-lg shadow-md">
+                                    <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">ផ្លាស់ប្តូរពាក្យសម្ងាត់</h3>
+                                    <form id="change-password-form" class="space-y-4">
+                                        <div>
+                                            <label for="current-password" class="block text-sm font-medium text-gray-700">ពាក្យសម្ងាត់បច្ចុប្បន្ន</label>
+                                            <input type="password" id="current-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                                        </div>
+                                        <div>
+                                            <label for="new-password" class="block text-sm font-medium text-gray-700">ពាក្យសម្ងាត់ថ្មី</label>
+                                            <input type="password" id="new-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                                        </div>
+                                        <div>
+                                            <label for="confirm-new-password" class="block text-sm font-medium text-gray-700">បញ្ជាក់ពាក្យសម្ងាត់ថ្មី</label>
+                                            <input type="password" id="confirm-new-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                                        </div>
+                                        <div class="pt-2">
+                                            <div class="flex justify-end gap-2">
+                                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">ផ្លាស់ប្តូរ</button>
+                                                <a id="btn-create-account-settings" href="admin.html" class="inline-flex items-center justify-center px-4 py-2 rounded-md text-white transition-colors duration-700 ease-in-out shadow">បង្កើតគណនីថ្មី</a>
+                                            </div>
+                                            <p id="change-password-error" class="text-red-600 text-sm mt-2"></p>
+                                            <p id="change-password-success" class="text-green-600 text-sm mt-2"></p>
+                                        </div>
+                                    </form>
+                                </div>
+                                <!-- Backup & Restore Section -->
+                                <div class="bg-white p-6 rounded-lg shadow-md">
+                                    <h3 class="text-xl font-bold text-gray-800 mb-2 border-b pb-2">បម្រុងទុក និងស្ដារឡើងវិញ</h3>
+                                    <p class="text-gray-600 text-sm mb-4">បម្រុងទុកទិន្នន័យទាំងអស់ (សៀវភៅ ខ្ចី-សង តាមថ្នាក់ កំណត់ត្រាចូលអាន ទីតាំង សិស្ស និងការកំណត់) ជា .LBBCK ហើយអាចស្ដារឡើងវិញពេលក្រោយ។</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <button id="btn-backup-all" type="button" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center">
+                                            <i class="fas fa-database mr-2"></i> បម្រុងទុកទិន្នន័យទាំងអស់
+                                        </button>
+                                        <div class="flex items-stretch gap-2">
+                                            <button id="btn-restore-all" type="button" class="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 flex items-center justify-center">
+                                                <i class="fas fa-upload mr-2"></i> ស្ដារពី .LBBCK
+                                            </button>
+                                            <input type="file" id="file-restore-lbbck" accept=".lbbck,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="hidden">
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-2">សូមរង់ចាំអំឡុងពេលបម្រុងទុក ឬ ស្ដារឡើងវិញ។</p>
+                                </div>
+                            </div>
+                            <!-- Right Column: Data & Danger Zone -->
+                            <div class="space-y-8">
+                                <!-- START: NEW EXPORT SECTION -->
+                                <div class="bg-white p-6 rounded-lg shadow-md">
+                                    <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">នាំចេញទិន្នន័យ</h3>
+                                    <p class="text-gray-600 mb-4">ជ្រើសរើសប្រភេទទិន្នន័យ រួចចុចប៊ូតុងនាំចេញជា Excel ដើម្បីទាញយកជា Excel (.xlsx)។</p>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label for="export-data-select" class="block text-sm font-medium text-gray-700">ជ្រើសរើសទិន្នន័យ</label>
+                                            <select id="export-data-select" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                                <option value="" enabled selected>-- សូមជ្រើសរើស --</option>
+                                                <option value="books">បញ្ជីសៀវភៅ</option>
+                                                <option value="loans">ប្រវត្តិនៃការខ្ចី-សង បុគ្គល</option>
+                                                <option value="class-loans">ប្រវត្តិនៃការខ្ចីតាមថ្នាក់</option>
+                                                <option value="reading-logs">ប្រវត្តិនៃការចូលអាន</option>
+                                                <option value="locations">ទីតាំងរក្សាទុកសៀវភៅ</option>
+                                                <option value="students">បញ្ជីសិស្ស</option>
+                                                <option value="settings">ព័ត៌មានទូទៅ</option>
+                                            </select>
+                                        </div>
+                                        <button id="export-excel-btn" class="w-full bg-emerald-500 text-white px-4 py-2 rounded-md hover:bg-emerald-600 flex items-center justify-center">
+                                            <i class="fas fa-file-excel mr-2"></i> នាំចេញជា Excel
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- END: NEW EXPORT SECTION -->
+
+                                <div class="bg-white p-6 rounded-lg shadow-md">
+                                    <h3 class="text-xl font-bold text-red-600 mb-4 border-b pb-2">តំបន់គ្រោះថ្នាក់</h3>
+                                    <p class="text-gray-600 mb-6">ការលុបទិន្នន័យខាងក្រោមជាអចិន្ត្រៃយ៍ មិនអាចស្តារឡើងវិញបានទេ សូមប្រុងប្រយត្នបំផុត!</p>
+                                    
+                                    <div class="space-y-6">
+                                        <!-- Delete Buttons -->
+                                        <div class="p-4 border rounded-lg">
+                                            <h4 class="font-semibold">លុបបញ្ជីសៀវភៅទាំងអស់</h4>
+                                            <p class="text-sm text-gray-500 mb-2">លុបទិន្នន័យសៀវភៅទាំងអស់ចេញពីប្រព័ន្ធ។</p>
+                                            <button onclick="window.openPasswordConfirmModal('books')" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700">លុបទាំងអស់</button>
+                                        </div>
+                                        <div class="p-4 border rounded-lg">
+                                            <h4 class="font-semibold">លុបកំណត់ត្រាខ្ចី-សង បុគ្គលទាំងអស់</h4>
+                                            <p class="text-sm text-gray-500 mb-2">លុបប្រវត្តិខ្ចី-សងរបស់បុគ្គលទាំងអស់។</p>
+                                            <button onclick="window.openPasswordConfirmModal('loans')" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700">លុបទាំងអស់</button>
+                                        </div>
+                                        <div class="p-4 border rounded-lg">
+                                            <h4 class="font-semibold">លុបប្រវត្តិនៃការខ្ចីតាមថ្នាក់ទាំងអស់</h4>
+                                            <p class="text-sm text-gray-500 mb-2">លុបប្រវត្តិខ្ចី-សងតាមថ្នាក់ទាំងអស់។</p>
+                                            <button onclick="window.openPasswordConfirmModal('classLoans')" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700">លុបទាំងអស់</button>
+                                        </div>
+                                        <div class="p-4 border rounded-lg">
+                                            <h4 class="font-semibold">លុបប្រវត្តិនៃការចូលអានទាំងអស់</h4>
+                                            <p class="text-sm text-gray-500 mb-2">លុបកំណត់ត្រាការចូលអានទាំងអស់។</p>
+                                            <button onclick="window.openPasswordConfirmModal('readingLogs')" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700">លុបទាំងអស់</button>
+                                        </div>
+                                        <div class="p-4 border rounded-lg">
+                                            <h4 class="font-semibold">លុបទីតាំងរក្សាទុកទាំងអស់</h4>
+                                            <p class="text-sm text-gray-500 mb-2">លុបទីតាំងធ្នើសៀវភៅទាំងអស់។</p>
+                                            <button onclick="window.openPasswordConfirmModal('locations')" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700">លុបទាំងអស់</button>
+                                        </div>
+                                        <div class="p-4 border rounded-lg">
+                                            <h4 class="font-semibold">លុបបញ្ជីទិន្នន័យសិស្សទាំងអស់</h4>
+                                            <p class="text-sm text-gray-500 mb-2">លុបទិន្នន័យសិស្សទាំងអស់ចេញពីប្រព័ន្ធ។</p>
+                                            <button onclick="window.openPasswordConfirmModal('students')" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-700">លុបទាំងអស់</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="book-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-20">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+            <h3 id="book-modal-title" class="text-2xl font-bold mb-6">បន្ថែមសៀវភៅថ្មី</h3>
+            <form id="book-form">
+                <input type="hidden" id="book-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="isbn" class="block text-gray-700 mb-1">លេខ ISBN</label>
+                        <input type="text" id="isbn" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="title" class="block text-gray-700 mb-1">ចំណងជើង</label>
+                        <input type="text" id="title" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                    </div>
+                    <div>
+                        <label for="author" class="block text-gray-700 mb-1">អ្នកនិពន្ធ/ថ្នាក់</label>
+                        <input type="text" id="author" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                    </div>
+                    <div>
+                        <label for="source" class="block text-gray-700 mb-1">ប្រភពសៀវភៅ</label>
+                        <input type="text" id="source" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="book-location-id" class="block text-gray-700 mb-1">ទីតាំងរក្សាទុក</label>
+                        <select id="book-location-id" class="w-full px-3 py-2 border border-gray-300 rounded-md"></select>
+                    </div>
+                    <div>
+                        <label for="quantity" class="block text-gray-700 mb-1">ចំនួន</label>
+                        <input type="number" id="quantity" class="w-full px-3 py-2 border border-gray-300 rounded-md" required min="0">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="book-url" class="block text-gray-700 mb-1">តំណរូបសៀវភៅ</label>
+                        <input type="url" id="book-url" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="https://example.com/book-page">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" onclick="window.closeBookModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">បោះបង់</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md">រក្សាទុក</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="location-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-20">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h3 id="location-modal-title" class="text-2xl font-bold mb-6">បន្ថែមទីតាំងថ្មី</h3>
+            <form id="location-form">
+                <input type="hidden" id="location-id">
+                <div class="mb-4">
+                    <label for="location-name" class="block text-gray-700 mb-1">ឈ្មោះទីតាំង</label>
+                    <input type="text" id="location-name" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+                <div class="mb-4">
+                    <label for="location-source" class="block text-gray-700 mb-1">ប្រភពធ្នើ</label>
+                    <input type="text" id="location-source" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div class="mb-4">
+                    <label for="location-year" class="block text-gray-700 mb-1">ឆ្នាំ</label>
+                    <input type="number" id="location-year" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" onclick="window.closeLocationModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">បោះបង់</button>
+                    <button type="submit" class="bg-purple-500 text-white px-4 py-2 rounded-md">រក្សាទុក</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="class-return-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-20">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-2xl font-bold mb-6">សងសៀវភៅសម្រាប់ថ្នាក់</h3>
+            <form id="class-return-form">
+                <input type="hidden" id="class-return-loan-id">
+                <div class="mb-4">
+                    <p><strong>សៀវភៅ:</strong> <span id="class-return-book-title"></span></p>
+                    <p><strong>ថ្នាក់:</strong> <span id="class-return-class-name"></span></p>
+                    <p><strong>ចំនួនខ្ចីសរុប:</strong> <span id="class-return-total-students"></span></p>
+                    <p><strong>បានសងរួច:</strong> <span id="class-return-already-returned"></span></p>
+                </div>
+                <div class="mb-4">
+                    <label for="number-to-return" class="block text-gray-700 mb-1">បញ្ចូលចំនួនសងបន្ថែម</label>
+                    <input type="number" id="number-to-return" class="w-full px-3 py-2 border border-gray-300 rounded-md" required min="1">
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" onclick="window.closeClassReturnModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">បោះបង់</button>
+                    <button type="submit" class="bg-teal-500 text-white px-4 py-2 rounded-md">រក្សាទុកការសង</button>
+                </div>
+            </form>
+        </div>
+    </div>
+     <div id="class-loan-edit-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-20">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-2xl font-bold mb-6">កែប្រែការខ្ចីតាមថ្នាក់</h3>
+            <form id="class-loan-edit-form">
+                <input type="hidden" id="class-loan-edit-id">
+                <div class="mb-4">
+                    <p><strong>សៀវភៅ:</strong> <span id="class-loan-edit-book-title"></span></p>
+                    <p><strong>ថ្នាក់:</strong> <span id="class-loan-edit-class-name"></span></p>
+                </div>
+                <div class="mb-4">
+                    <label for="class-loan-edit-date" class="block text-gray-700 mb-1">កាលបរិច្ឆេទខ្ចី</label>
+                    <input type="date" id="class-loan-edit-date" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" onclick="window.closeClassLoanEditModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">បោះបង់</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md">រក្សាទុកការផ្លាស់ប្តូរ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Grouped Class Return Modal -->
+    <div id="grouped-class-return-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-20">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold mb-6">សងសៀវភៅតាមថ្នាក់</h3>
+            <form id="grouped-class-return-form">
+                <div class="mb-4">
+                    <p><strong>ថ្នាក់:</strong> <span id="grouped-return-class-name"></span></p>
+                    <p><strong>ថ្ងៃខ្ចី:</strong> <span id="grouped-return-loan-date"></span></p>
+                </div>
+                
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-700 mb-3">ជ្រើសរើសសៀវភៅដែលត្រូវសង:</h4>
+                    <div id="grouped-return-books-list" class="space-y-3 max-h-60 overflow-y-auto border rounded-md p-3 bg-gray-50">
+                        <!-- Books will be dynamically inserted here -->
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-6">
+                    <button type="button" onclick="window.closeGroupedClassReturnModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">បោះបង់</button>
+                    <button type="submit" class="bg-teal-500 text-white px-4 py-2 rounded-md">រក្សាទុកការសង</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Student Modal -->
+    <div id="student-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-20">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
+            <h3 id="student-modal-title" class="text-2xl font-bold mb-6">បន្ថែមសិស្សថ្មី</h3>
+            <form id="student-form">
+                <input type="hidden" id="student-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="student-no" class="block text-gray-700 mb-1">ល.រ</label>
+                        <input type="text" id="student-no" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="student-code" class="block text-gray-700 mb-1">អត្តលេខ</label>
+                        <input type="text" id="student-code" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                    </div>
+                    <div>
+                        <label for="student-lastname" class="block text-gray-700 mb-1">នាមត្រកូល</label>
+                        <input type="text" id="student-lastname" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                    </div>
+                    <div>
+                        <label for="student-firstname" class="block text-gray-700 mb-1">នាមខ្លួន</label>
+                        <input type="text" id="student-firstname" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                    </div>
+                    <div>
+                        <label for="student-gender" class="block text-gray-700 mb-1">ភេទ</label>
+                        <select id="student-gender" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            <option value="ប្រុស">ប្រុស</option>
+                            <option value="ស្រី">ស្រី</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="student-dob" class="block text-gray-700 mb-1">ថ្ងៃខែឆ្នាំកំណើត</label>
+                        <input type="text" id="student-dob" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="student-class" class="block text-gray-700 mb-1">ថ្នាក់</label>
+                        <input type="text" id="student-class" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                    <div>
+                        <label for="student-photo-url" class="block text-gray-700 mb-1">រូបថត URL</label>
+                        <input type="url" id="student-photo-url" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" onclick="window.closeStudentModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">បោះបង់</button>
+                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-md">រក្សាទុក</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Password Confirmation Modal -->
+    <div id="password-confirm-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden no-print z-30">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
+            <h3 class="text-xl font-bold mb-4">បញ្ជាក់ការលុប</h3>
+            <p class="text-gray-600 mb-4">ដើម្បីលុបទិន្នន័យនេះបាន សូមវាយបញ្ចូលពាក្យសម្ងាត់របស់អ្នក រួចចុចប៊ូតុង "បញ្ជាក់"។</p>
+            <form id="password-confirm-form">
+                <input type="hidden" id="collection-to-delete">
+                <div>
+                    <label for="user-password" class="block text-gray-700 mb-1">ពាក្យសម្ងាត់</label>
+                    <div class="mt-1 flex items-center gap-2">
+                        <input type="password" id="user-password" class="flex-grow px-3 py-2 border border-gray-300 rounded-md" required>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button type="button" onclick="window.closePasswordConfirmModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md whitespace-nowrap">បោះបង់</button>
+                            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md whitespace-nowrap">បញ្ជាក់</button>
+                        </div>
+                    </div>
+                    <p id="password-error" class="text-red-500 text-sm mt-1"></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex flex-col items-center justify-center z-40 hidden">
+        <i class="fas fa-spinner fa-spin text-white text-5xl"></i>
+        <p class="text-white text-xl mt-4">កំពុងដំណើរការ...</p>
+    </div>
+    
+    <!-- SheetJS for Excel (.xlsx/.xls) parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Link to the external JavaScript file -->
+    <script type="module" src="./app.js"></script>
+</body>
+</html>

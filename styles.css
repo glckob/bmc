@@ -1,0 +1,636 @@
+body {
+    font-family: 'Noto Sans Khmer', sans-serif;
+}
+
+h1, h2, h3, .font-koulen {
+    font-family: 'Koulen', cursive;
+}
+
+/* Utility: prevent wrapping */
+.no-wrap {
+    white-space: nowrap;
+}
+
+.print-only {
+    display: none;
+}
+
+.print-area {
+    display: none;
+}
+
+/* Add shadows to textboxes and select elements */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="url"],
+input[type="number"],
+input[type="date"],
+select {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+    transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+/* Enhance shadow on focus for better user experience */
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="url"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+select:focus {
+    box-shadow: 0 0 0 3px rgb(96 165 250 / 0.4); /* Tailwind's blue-300 with opacity */
+    border-color: #3b82f6; /* Tailwind's blue-500 */
+    outline: none;
+}
+
+/* Scoped: Always show a subtle blue shadow for textboxes in Settings page */
+#page-settings input[type="text"],
+#page-settings input[type="email"],
+#page-settings input[type="password"],
+#page-settings input[type="url"],
+#page-settings input[type="number"],
+#page-settings input[type="date"],
+#page-settings select,
+#page-settings textarea {
+    box-shadow: 0 0 0 2px rgb(59 130 246 / 0.25) !important; /* blue-500 at 25% */
+    border-color: #3b82f6 !important; /* blue-500 */
+}
+
+/* Stronger on focus within Settings */
+#page-settings input[type="text"]:focus,
+#page-settings input[type="email"]:focus,
+#page-settings input[type="password"]:focus,
+#page-settings input[type="url"]:focus,
+#page-settings input[type="number"]:focus,
+#page-settings input[type="date"]:focus,
+#page-settings select:focus,
+#page-settings textarea:focus {
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.45) !important; /* stronger blue */
+}
+
+/* --- Student Card Styles --- */
+#page-student-cards .controls {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+#page-student-cards .card-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px; /* Gap for screen view */
+  justify-content: center;
+}
+
+#page-student-cards .card {
+  width: 6.5cm;
+  height: 9.5cm;
+  background: white;
+  border: 1px solid #000;
+  border-radius: 0px;
+  padding: 6px;
+  font-size: 11px;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  page-break-inside: avoid;
+}
+
+#page-student-cards .card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 75%;
+  opacity: 0.20;
+  z-index: 0;
+}
+
+#page-student-cards .card * {
+  position: relative;
+  z-index: 1;
+}
+
+#page-student-cards .school-name {
+  font-family: 'Khmer OS Muol Light', 'Arial', sans-serif;
+  font-size: 18px;
+  color: #0000cc;
+  margin-bottom: 4px;
+  min-height: 24px;
+}
+
+#page-student-cards .student-name {
+  font-family: 'Khmer OS Muol Light', 'Arial', sans-serif;
+  font-size: 14px;
+  color: #000000;
+  margin: 4px 0;
+}
+
+#page-student-cards .info-and-qr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  padding: 0 2px;
+}
+
+#page-student-cards .info {
+  text-align: left;
+  font-size: 16px;
+  line-height: 2.0;
+  flex-grow: 1;
+}
+
+#page-student-cards .info b {
+  display: inline-block;
+  width: 60px;
+}
+
+#page-student-cards .qr {
+  width: 70px;
+  height: 70px;
+  margin-top: 0;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+#page-student-cards .barcode-container {
+    padding: 0 5px;
+    margin-top: 0px;
+}
+
+#page-student-cards .barcode-container svg {
+    width: 100%;
+    height: auto;
+}
+
+#page-student-cards .photo-wrapper {
+  position: relative;
+  width: 95px;
+  height: 120px;
+  margin: 4px auto 4px 15px;
+}
+
+#page-student-cards .photo {
+  width: 100%;
+  height: 100%;
+  border-radius: 0%;
+  object-fit: fill;
+  border: 1px solid #000;
+}
+
+#page-student-cards .no-photo {
+    background-color: transparent;
+    border: 1px solid #000;
+}
+
+#page-student-cards .stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 190px;
+  height: 190px;
+  opacity: 0.9;
+  z-index: 2;
+  background-color: transparent;
+}
+
+#page-student-cards #loading-cards {
+  text-align: center;
+  font-size: 18px;
+  padding: 2px;
+  color: #555;
+  width: 100%;
+}
+
+#auth-container, #loading-overlay {
+    transition: opacity 0.5s;
+}
+
+#print-header {
+    display: none;
+}
+
+/* ========== START: REVISED PRINT STYLES ========== */
+@media print {
+    /* --- General Print Setup --- */
+    body {
+        background-color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Show print-only helpers */
+    .print-only { display: block !important; }
+
+    /* --- Hide ALL non-printable elements FORCEFULLY --- */
+    #auth-container,
+    #sidebar,
+    .no-print,
+    #book-modal,
+    #location-modal,
+    #class-return-modal,
+    #class-loan-edit-modal,
+    #student-modal,
+    #password-confirm-modal,
+    #loading-overlay {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    /* --- STYLES FOR ALL REPORTS (NOT STUDENT CARDS) --- */
+    body[class*="printing-page-"]:not(.printing-page-student-cards) {
+        @page {
+            size: A4;
+            margin: 1.27cm;
+        }
+
+        /* Reset layout for printing */
+        #app-container,
+        #app-container > .flex,
+        .flex-1.flex.flex-col.overflow-hidden {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+        
+        main {
+            padding: 0 !important;
+            margin: 0 !important;
+            padding-top: 3.5cm !important; 
+        }
+
+        /* Hide everything, then reveal only the print header and main content */
+        body > * {
+            visibility: hidden !important;
+        }
+        #print-header, main {
+            visibility: visible !important;
+        }
+        main * {
+            visibility: visible !important;
+        }
+        main .no-print, main .no-print * {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        /* Report Header Styles */
+        #print-header {
+            display: block !important;
+            position: absolute;
+            top: 0.5cm;
+            left: 1.27cm;
+            right: 1.27cm;
+            height: 3cm;
+            background-color: white !important; 
+        }
+        .print-header-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .print-header-content .motto {
+            text-align: center;
+            font-family: 'Khmer OS Muol Light', sans-serif;
+            font-size: 14pt;
+        }
+        .print-header-content .motto p {
+            margin: 0;
+            line-height: 1.4;
+        }
+        .print-header-content .school-name {
+            width: 100%;
+            text-align: left;
+            margin-top: 5px;
+            font-family: 'Khmer OS Muol Light', sans-serif;
+            font-size: 12pt;
+        }
+        
+        /* START: FIX FOR SCROLLBAR AND TABLE BORDERS */
+        .overflow-x-auto {
+            overflow: visible !important;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+        }
+        th, td {
+            border: 1px solid #999 !important; /* Force border */
+            padding: 6px;
+        }
+        thead, .bg-gray-200, .bg-gray-50, .bg-gray-100, .bg-gray-300, .bg-gray-400, .bg-gray-500 {
+            background-color: white !important; /* Force white background for all gray elements */
+            color: black !important; /* Ensure text is black */
+        }
+        
+        /* Remove all gray backgrounds from common elements */
+        .bg-gray-50, .bg-gray-100, .bg-gray-200, .bg-gray-300, .bg-gray-400, .bg-gray-500,
+        .bg-gray-600, .bg-gray-700, .bg-gray-800, .bg-gray-900 {
+            background-color: white !important;
+        }
+        tr {
+           page-break-inside: avoid;
+        }
+        /* END: FIX FOR SCROLLBAR AND TABLE BORDERS */
+    }
+    
+    /* NEW: Print specific styles for class loan student list */
+    body.printing-page-class-loan-list {
+        /* General A4 portrait setup */
+        @page {
+            size: A4 portrait;
+            margin: 1.27cm;
+        }
+
+        /* Hide all UI elements */
+        body > *:not(#app-container) { display: none !important; }
+        #app-container > *, 
+        .page > *:not(#class-loan-students-print-area) { display: none !important; }
+        .no-print { display: none !important; }
+        
+        /* Show print-only elements */
+        #print-header,
+        #class-loan-students-print-area {
+            display: block !important;
+        }
+        #print-header,
+        #print-header * { visibility: visible !important; }
+        #class-loan-students-print-area,
+        #class-loan-students-print-area * { visibility: visible !important; }
+
+        /* Style the table for printing */
+        #class-loan-students-print-area table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+            font-size: 10pt;
+        }
+        #class-loan-students-print-area th, 
+        #class-loan-students-print-area td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        #class-loan-students-print-area th {
+            background-color: white !important; /* MODIFICATION: Force white background */
+            font-weight: bold;
+            text-align: center;
+            color: black !important;
+        }
+
+        /* Footer styling (keep minimal; global style will right-align) */
+        .print-footer {
+            margin-top: 24px;
+        }
+    }
+
+    /* --- START: FINAL FIX FOR STUDENT CARD PRINTING --- */
+    body.printing-page-student-cards {
+        @page {
+            size: A4 portrait;
+            margin: 5mm; /* Small margin for A4 page */
+        }
+
+        /* Reset body for printing */
+        margin: 0 !important;
+        padding: 0 !important;
+
+        /* Hide everything on the page by default */
+        body > * {
+            display: none !important;
+        }
+
+        /* Make ONLY the #app-container and its parents visible and behave like simple blocks */
+        #app-container,
+        #app-container > .flex,
+        .flex-1.flex.flex-col.overflow-hidden,
+        main {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Now, hide all pages within main... */
+        main > .page {
+            display: none !important;
+        }
+
+        /* ...and then reveal ONLY the student card page. */
+        #page-student-cards {
+            display: block !important;
+        }
+        
+        /* On-screen container should be a simple block in print mode */
+        #student-card-container {
+            display: block !important;
+        }
+
+        /* NEW: Style for the dynamically created page containers */
+        .print-page-container {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2mm;
+            width: 100%;
+            height: calc(297mm - 10mm); /* A4 height minus top/bottom margins */
+            box-sizing: border-box;
+            page-break-after: always; /* Break after each page container */
+        }
+
+        /* NEW: Prevent the final blank page by targeting the last container */
+        .print-page-container:last-of-type {
+            page-break-after: auto !important;
+        }
+
+        /* Adjust card size for 9 cards per A4 page */
+        #page-student-cards .card {
+            page-break-inside: avoid;
+            margin: 0 !important;
+            padding: 3mm !important;
+            font-size: 13px !important;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #000; /* Ensure border is visible */
+            display: flex !important; /* Re-apply flex for internal layout */
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        /* START: MODIFICATIONS FOR PRINTING TRANSPARENCY & FIXES (User Request) */
+
+        /* 1. កំណត់ផ្ទៃខាងក្រោយទិន្នន័យសិស្សថ្លា */
+        #page-student-cards .card {
+            background-color: transparent !important;
+        }
+
+        /* 2. ផ្ទៃរូបថតថ្លា ប៉ុន្តែរក្សាស៊ុមខ្មៅ (FIX) */
+        #page-student-cards .photo, 
+        #page-student-cards .no-photo {
+            background-color: transparent !important;
+            border: 1px solid #000 !important; /* FIX: Re-apply black border for print */
+        }
+
+        /* 3. ផ្ទៃរូបត្រាថ្លា */
+        #page-student-cards .stamp {
+            background-color: transparent !important;
+        }
+
+        /* 4. រំកិល barcode ចុះបន្តិច */
+        #page-student-cards .barcode-container {
+            margin-top: 2mm !important;
+            background-color: transparent !important; /* Ensure no white bar */
+        }
+        
+        /* 5. បន្ថែមទំហំត្រា (NEW FIX) */
+        #page-student-cards .stamp {
+            width: 190px !important;
+            height: 190px !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            bottom: 200 !important;
+            right: auto !important; /* Unset right property */
+
+            opacity: 0.9 !important;
+        }
+
+        /* END: MODIFICATIONS FOR PRINTING TRANSPARENCY & FIXES */
+
+
+        /* Perfect background logo positioning */
+        #page-student-cards .card::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80% !important;
+            height: 80% !important;
+            background-repeat: no-repeat !important;
+            background-position: center center !important;
+            background-size: contain !important;
+            opacity: 0.15 !important;
+            z-index: 0;
+        }
+
+        /* Ensure all card content is above the background */
+        #page-student-cards .card * {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Adjust photo size for smaller cards */
+        #page-student-cards .photo-wrapper {
+            width: 20mm !important;
+            height: 25mm !important;
+            margin: 2mm auto 2mm 3mm !important;
+        }
+
+        /* Adjust QR code size */
+        #page-student-cards .qr {
+            width: 15mm !important;
+            height: 15mm !important;
+            margin-left: 2mm !important;
+        }
+
+        /* Adjust font sizes for smaller cards */
+        #page-student-cards .school-name {
+            font-size: 10px !important;
+            margin-bottom: 1mm !important;
+            min-height: 12px !important;
+        }
+
+        #page-student-cards .student-name {
+            font-size: 9px !important;
+            margin: 1mm 0 !important;
+        }
+
+        #page-student-cards .info {
+            font-size: 8px !important;
+            line-height: 1.3 !important;
+        }
+
+        /* Hide elements not meant for printing inside the card page */
+        #page-student-cards .no-print {
+            display: none !important;
+        }
+    }
+    /* --- END: FINAL FIX FOR STUDENT CARD PRINTING --- */
+}
+/* ========== END: REVISED PRINT STYLES ========== */
+
+/* === Reading Log: ensure only the intended section prints === */
+@media print {
+  /* When printing grouped summary, hide detailed table */
+  body.printing-reading-log-grouped #reading-log-print-area {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  body.printing-reading-log-grouped #reading-log-grouped-area {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Hide the title in the grouped-by-book print report */
+  body.printing-reading-log-grouped #reading-log-grouped-area h3 {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* When printing detailed reading log (default), hide grouped area */
+  body.printing-page-reading-log:not(.printing-reading-log-grouped) #reading-log-grouped-area {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+
+/* NEW: Upper title above report title for grouped-by-book reading log (print only) */
+@media print {
+  #print-header .print-upper-title {
+    font-family: 'Khmer OS Muol Light', sans-serif;
+    font-size: 12pt;
+    text-align: center;
+    margin-top: 4px;
+    margin-bottom: 2px;
+  }
+}
+
+/* Center the main report title in print header */
+@media print {
+  #print-header .report-title {
+    width: 100%;
+    text-align: center !important;
+  }
+}
+
+/* Global footer style for all print pages */
+@media print {
+  .print-footer {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* Move content to the right */
+    text-align: right;
+    gap: 6px;
+    font-size: 11pt;
+  }
+  /* Offset the librarian label about 3 tab-stops from the right */
+  .print-footer-right {
+    margin-right: 10ch; /* approx 1 tab (8ch) */
+  }
+}

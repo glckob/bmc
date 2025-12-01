@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8" />
+  <title>កាតសិស្ស</title>
+  <style>
+    body {
+      font-family: 'Khmer OS Siemreap', 'Arial', sans-serif;
+      background: #ffffff;
+      padding: 10px;
+      margin: 0;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Ensured input[type="date"] is included */
+    select, input[type="text"], button, input[type="date"] {
+      padding: 8px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2mm;
+      justify-content: center;
+    }
+
+    .card {
+      width: 6.5cm;
+      height: 9.5cm;
+      background: white;
+      border: 1px solid #000;
+      border-radius: 8px;
+      padding: 6px;
+      font-size: 11px;
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-sizing: border-box;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 75%;
+      opacity: 0.20;
+      z-index: 0;
+    }
+
+    .card * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .school-name {
+      font-family: 'Khmer OS Muol Light', 'Arial', sans-serif;
+      font-size: 18px;
+      color: #0000cc;
+      margin-bottom: 4px;
+    }
+
+    .student-name {
+      font-family: 'Khmer OS Muol Light', 'Arial', sans-serif;
+      font-size: 14px;
+      color: #000000;
+      margin: 4px 0;
+    }
+
+    .info-and-qr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      padding: 0 2px;
+    }
+
+    .info {
+      text-align: left;
+      font-size: 12px;
+      line-height: 1.6;
+      flex-grow: 1;
+    }
+
+    .info b {
+      display: inline-block;
+      width: 80px;
+    }
+
+    .qr {
+      width: 70px;
+      height: 70px;
+      margin-top: 0;
+      margin-left: 10px;
+    }
+
+    .photo-wrapper {
+      position: relative;
+      width: 95px;
+      height: 120px;
+      margin: 4px auto 4px 15px; /* Adjusted margin slightly */
+    }
+
+    .photo {
+      width: 100%;
+      height: 100%;
+      border-radius: 0%;
+      object-fit: fill;
+      border: 1px solid #000;
+    }
+
+    .stamp {
+      position: absolute;
+      top: 50%;
+      left: +170%;
+      width: 140px;
+      height: 140px;
+      transform: translate(-50%, -50%);
+      opacity: 1.0;
+      z-index: 2;
+      background-color: transparent;
+    }
+
+    #loading {
+      text-align: center;
+      font-size: 18px;
+      padding: 20px;
+      color: #555;
+    }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin-top: 10mm;
+        margin-bottom: 4mm;
+        margin-left: 5mm;
+        margin-right: 5mm;
+      }
+
+      html, body {
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        padding: 0;
+      }
+
+      .controls, #loading, .home-btn {
+        display: none;
+      }
+
+      .card {
+        page-break-inside: avoid;
+      }
+    }
+    /* Home button (top-right, consistent with searchbook.html) */
+    .home-btn {
+      position: fixed; top: 12px; right: 16px; z-index: 50;
+      background: #10b981; color: #ffffff; border: 1px solid #059669;
+      padding: 8px 14px; border-radius: 9999px; font-weight: 700; cursor: pointer;
+      text-decoration: none; box-shadow: 0 4px 20px rgba(0,0,0,.06);
+      transition: box-shadow .2s, transform .05s, background .2s;
+    }
+    .home-btn:hover { box-shadow: 0 8px 28px rgba(0,0,0,.12); }
+    .home-btn:active { transform: translateY(1px); background:#059669; }
+  </style>
+
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Barcode Generation Library -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+</head>
+<body>
+  <a href="index.html" class="home-btn"><i class="fas fa-home" aria-hidden="true"></i> ទំព័រដើម</a>
+  <div class="controls">
+    <!-- RE-ADDED Date Input -->
+    <label for="cardIssueDate" style="font-size: 14px; font-weight: 500;">ថ្ងៃចេញប័ណ្ណ:</label>
+    <input type="date" id="cardIssueDate">
+
+    <select id="classFilter">
+      <option value="">ថ្នាក់ទាំងអស់</option>
+    </select>
+    
+    <p id="class-summary" class="text-sm text-gray-600 font-medium" style="min-height: 1.25em; margin: 0 10px;">&nbsp;</p>
+
+    <input type="text" id="searchBox" placeholder="ស្វែងរកតាមឈ្មោះ ឬអត្តលេខ" />
+    <button onclick="window.print()">🖨️ បោះពុម្ព / រក្សាទុក PDF</button>
+    
+    <p style="color: red; text-align: center; width: 100%; flex-basis: 100%;">
+      🖨️ ដើម្បីបោះពុម្ព Logo អោយចេញ សូមចុច "More Settings" ហើយ ✓ "Background graphics"
+    </p>
+  </div>
+
+  <div id="loading">🔄 កំពុងទាញទិន្នន័យ...</div>
+  <div id="container" class="container" style="display: none;"></div>
+
+  <!-- Supabase imports -->
+  <script type="module">
+    import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
+
+    // Supabase configuration
+    const supabaseUrl = 'https://bcbwrymhpjcncgiwjllr.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjYndyeW1ocGpjbmNnaXdqbGxyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDA5MDEsImV4cCI6MjA3MTE3NjkwMX0.ZiU1uF9_5h2N9choQvNihTvKWfqtPlHdvQm2iPaI2jw'
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    let allData = [];
+    let settingsData = {};
+    let currentUserId = null;
+
+    // Authentication state listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+        handleAuthState(session);
+    });
+
+    supabase.auth.onAuthStateChange((event, session) => {
+        handleAuthState(session);
+    });
+
+    function handleAuthState(session) {
+        if (session?.user) {
+            // Only load data if user ID changes or wasn't set before
+            if (!currentUserId || currentUserId !== session.user.id) {
+                 currentUserId = session.user.id;
+                 loadDataFromSupabase();
+            }
+        } else {
+             currentUserId = null; // Clear user ID
+            // Redirect to login page if not authenticated
+            // Check if already on index.html to prevent redirect loop
+            if (!window.location.pathname.endsWith('index.html')) {
+                 window.location.href = 'index.html';
+            }
+        }
+    }
+
+    async function loadDataFromSupabase() {
+        if (!currentUserId) return;
+        
+        // Show loading indicator
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('container').style.display = 'none';
+
+        try {
+            // Fetch all students in pages to avoid the default 1000-row limit
+            const pageSize = 1000;
+            let offset = 0;
+            let allStudents = [];
+            while (true) {
+                const { data: batch, error: studentsError } = await supabase
+                    .from('students')
+                    .select('*')
+                    .eq('user_id', currentUserId)
+                    .range(offset, offset + pageSize - 1);
+
+                if (studentsError) throw studentsError;
+                
+                const studentsBatch = batch || [];
+                allStudents = allStudents.concat(studentsBatch);
+                
+                if (studentsBatch.length < pageSize) {
+                    break; // Last page
+                }
+                offset += pageSize;
+            }
+            
+            allData = allStudents; // Use the complete list
+            populateFilters(allData);
+            
+            // Don't display cards initially - wait for user to select a class
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('container').style.display = 'flex';
+            document.getElementById('container').innerHTML = '<p style="text-align: center; width: 100%; padding: 40px; color: #666; font-size: 16px;">សូមជ្រើសរើសថ្នាក់ដើម្បីបង្ហាញកាតសិស្ស</p>';
+             // Clear summary on initial load
+            const summaryEl = document.getElementById("class-summary");
+            if(summaryEl) summaryEl.innerHTML = '&nbsp;';
+
+            
+            // Load settings data
+            const { data: settings, error: settingsError } = await supabase
+                .from('settings')
+                .select('*')
+                .eq('user_id', currentUserId);
+            
+            if (settingsError) throw settingsError;
+            
+            // Convert key-value pairs back to object structure
+            const settingsObj = {};
+            if (settings && settings.length > 0) {
+                settings.forEach(setting => {
+                    if (setting.key && setting.value !== null) {
+                        settingsObj[setting.key] = setting.value;
+                    }
+                });
+            }
+            
+            settingsData = settingsObj;
+            updateCardBackground();
+
+            // Call filterAndDisplay initially if data loaded successfully
+            // This ensures the summary is updated if a default class is selected later or if 'all' is chosen.
+            filterAndDisplay();
+            
+        } catch (error) {
+            console.error('Error loading data:', error);
+            document.getElementById('loading').innerHTML = '❌ មានបញ្ហាក្នុងការទាញយកទិន្នន័យ';
+            document.getElementById('loading').style.display = 'block'; // Ensure error is visible
+            document.getElementById('container').style.display = 'none';
+        }
+    }
+
+    /**
+     * Custom sort function for class names (e.g., "9A", "10B", "12E").
+     * Sorts numerically by grade, then alphabetically by class letter.
+     */
+    function customSortClasses(a, b) {
+        // Regex to extract grade number and class letter (e.g., "12E", "9A", "10")
+        const regex = /^(\d+)([A-Z]?)?.*$/i;
+        
+        const matchA = a.match(regex);
+        const matchB = b.match(regex);
+
+        // If both match the pattern
+        if (matchA && matchB) {
+            const numA = parseInt(matchA[1], 10);
+            const charA = (matchA[2] || '').toUpperCase();
+            const numB = parseInt(matchB[1], 10);
+            const charB = (matchB[2] || '').toUpperCase();
+
+            // First, compare by grade number
+            if (numA !== numB) {
+                return numA - numB;
+            }
+            
+            // If numbers are equal, compare by class letter
+            // (Empty string "" comes before "A")
+            return charA.localeCompare(charB);
+        }
+        
+        // Fallback for any strings that don't match (e.g., "Special Class")
+        // This will sort them alphabetically relative to each other.
+        return a.localeCompare(b);
+    }
+
+    function populateFilters(data) {
+      if (data.length === 0) return;
+      
+      const classKey = Object.keys(data[0]).find(k => k.includes('ថ្នាក់'));
+      const gradeSet = new Set();
+      const classSet = new Set();
+      const yearSet = new Set();
+
+      data.forEach(std => {
+        if (classKey && std[classKey]) {
+          // Trim whitespace from class name just in case
+          classSet.add(std[classKey].trim());
+        }
+        // Add other filters if needed
+      });
+
+      const classFilter = document.getElementById("classFilter");
+      classFilter.innerHTML = '<option value="">----ជ្រើសរើសថ្នាក់----</option>';
+      classFilter.innerHTML += '<option value="all">ថ្នាក់ទាំងអស់</option>';
+      
+      // Use the new custom sort function
+      const sortedClasses = [...classSet].sort(customSortClasses);
+      
+      sortedClasses.forEach(cls => {
+        classFilter.innerHTML += `<option value="${cls}">${cls}</option>`;
+      });
+
+      // Keep default as blank (no selection)
+      classFilter.value = "";
+
+      classFilter.onchange = filterAndDisplay;
+      document.getElementById("searchBox").oninput = filterAndDisplay;
+      // RE-ADDED: Trigger display update when date changes
+      document.getElementById("cardIssueDate").onchange = filterAndDisplay;
+    }
+
+    function updateCardBackground() {
+      // Update the dynamic style for the card background
+      let styleElement = document.getElementById('dynamic-card-style');
+      if (!styleElement) {
+        styleElement = document.createElement('style');
+        styleElement.id = 'dynamic-card-style';
+        document.head.appendChild(styleElement);
+      }
+      const cardBgUrl = settingsData.cardBgUrl || 'https://i.imgur.com/s46369v.png'; // Default MOEYS logo
+      styleElement.innerHTML = `.card::before { background-image: url('${cardBgUrl}'); }`;
+    }
+
+    function filterAndDisplay() {
+      // Ensure data is loaded before proceeding
+      if (allData.length === 0 && currentUserId) {
+         console.log("filterAndDisplay called before data loaded, waiting...");
+         // Optionally show a temporary message or do nothing until data loads
+         // document.getElementById('container').innerHTML = '<p>Loading data...</p>';
+         return;
+      }
+       if (allData.length === 0 && !currentUserId) {
+         console.log("filterAndDisplay called, but no user logged in.");
+         return; // No user, don't try to filter
+      }
+      
+      // Define keys needed for filtering and summary
+      const classKey = Object.keys(allData[0]).find(k => k.includes('ថ្នាក់'));
+      const nameKey = Object.keys(allData[0]).find(k => k.includes('នាមខ្លួន'));
+      const lastNameKey = Object.keys(allData[0]).find(k => k.includes('នាមត្រកូល'));
+      const idKey = Object.keys(allData[0]).find(k => k.toLowerCase().includes('អត្តលេខ'));
+      const genderKey = Object.keys(allData[0]).find(k => k.includes('ភេទ')); // Key for gender
+      
+      const classFilterEl = document.getElementById("classFilter");
+      const cls = classFilterEl ? classFilterEl.value : ""; // Handle case where element might not exist yet
+      const keyword = document.getElementById("searchBox").value.toLowerCase();
+      const summaryEl = document.getElementById("class-summary"); // Get summary element
+
+      // If no class is selected (blank), show no cards and clear summary
+      if (cls === "") {
+        if(summaryEl) summaryEl.innerHTML = '&nbsp;'; // Clear summary but keep space
+        displayCards([]);
+        return;
+      }
+
+      // --- NEW LOGIC FOR SUMMARY ---
+      // Get students for summary (all or specific class)
+      const studentsForSummary = (cls === "all")
+        ? allData
+        : allData.filter(std => classKey && std[classKey] === cls);
+
+      const totalStudents = studentsForSummary.length;
+      const femaleStudents = studentsForSummary.filter(std => genderKey && (std[genderKey] === 'F' || std[genderKey] === 'ស្រី')).length;
+
+      if(summaryEl) summaryEl.textContent = `| សរុប: ${totalStudents} នាក់ (ស្រី: ${femaleStudents} នាក់)`;
+      // --- END NEW LOGIC ---
+
+      // Filter this group by keyword for card display
+      const filtered = studentsForSummary.filter(std => {
+        const fullName = `${std[lastNameKey] || ''} ${std[nameKey] || ''}`.toLowerCase();
+        const studentId = (std[idKey] || '').toLowerCase();
+        const keywordMatch = !keyword || fullName.includes(keyword) || studentId.includes(keyword);
+        return keywordMatch;
+      });
+
+      displayCards(filtered);
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      // Handles both YYYY-MM-DD and potentially DD-MM-YYYY inputs
+      if (dateStr.includes('-')) {
+        const parts = dateStr.split("-");
+        if (parts.length === 3) {
+            // Assume YYYY-MM-DD if year is first
+            if (parts[0].length === 4) {
+                 return `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert YYYY-MM-DD to DD-MM-YYYY
+            }
+             // Assume DD-MM-YYYY if day is first
+             else if (parts[2].length === 4) {
+                return dateStr; // Already in DD-MM-YYYY format
+             }
+        }
+      }
+      return dateStr; // Return original if format is unexpected
+    }
+
+
+    function displayCards(data) {
+      const loading = document.getElementById("loading");
+      const container = document.getElementById("container");
+
+      if (loading) loading.style.display = "none"; // Hide loading if it exists
+      if (!container) return; // Exit if container doesn't exist
+
+      container.style.display = "flex";
+      container.innerHTML = "";
+
+      // --- RE-ADDED: Get and format the issue date ONCE ---
+      const issueDateValue = document.getElementById('cardIssueDate')?.value; // Use optional chaining
+      let formattedDate = '';
+      if (issueDateValue) {
+        // Use the formatDate function to handle potential initial format differences
+        formattedDate = formatDate(issueDateValue);
+      }
+      // --- END RE-ADDED ---
+
+      if (data.length === 0) {
+        container.innerHTML = `<p style="text-align: center; width: 100%; padding: 20px; color: #666;">រកមិនឃើញទិន្នន័យសិស្សទេ។</p>`;
+        return;
+      }
+
+       // Make sure data[0] exists before accessing keys
+      if (!data[0]) {
+        console.error("Data array is not empty, but first element is undefined.");
+        container.innerHTML = `<p style="text-align: center; width: 100%; padding: 20px; color: #f00;">Error: Invalid student data structure.</p>`;
+        return;
+      }
+
+      const classKey = Object.keys(data[0]).find(k => k.includes('ថ្នាក់'));
+      const nameKey = Object.keys(data[0]).find(k => k.includes('នាមខ្លួន'));
+      const lastNameKey = Object.keys(data[0]).find(k => k.includes('នាមត្រកូល'));
+      const idKey = Object.keys(data[0]).find(k => k.toLowerCase().includes('អត្តលេខ'));
+      const dobKey = Object.keys(data[0]).find(k => k.includes('ថ្ងៃខែឆ្នាំកំណើត'));
+      const genderKey = Object.keys(data[0]).find(k => k.includes('ភេទ'));
+      const photoUrlKey = Object.keys(data[0]).find(k => k.includes('រូបថត URL'));
+
+      const schoolName = settingsData.schoolName || 'ឈ្មោះសាលា';
+      const academicYear = settingsData.academicYear || 'YYYY-YYYY';
+      const sealUrl = settingsData.sealImageUrl || '';
+
+      data.forEach(std => {
+        // Check if std is valid before processing
+        if (!std || typeof std !== 'object') {
+            console.warn("Skipping invalid student data:", std);
+            return;
+        }
+
+        const div = document.createElement("div");
+        div.className = "card";
+        const qrId = `qr-${std.id}`; // Assuming std.id exists and is unique
+        const barcodeId = `barcode-${std.id}`;
+        
+        const fullName = `${std[lastNameKey] || ''} ${std[nameKey] || ''}`.trim();
+        const studentClass = classKey ? `${std[classKey]}` : '';
+        const studentId = idKey ? std[idKey] : '';
+        const dob = dobKey ? formatDate(std[dobKey]) : ''; // Format DOB too
+        const gender = genderKey ? std[genderKey] : '';
+        
+        // --- NEW LOGIC FOR GENDER PREFIX ---
+        const isFemale = (gender === 'F' || gender === 'ស្រី');
+        const displayName = isFemale ? `ក. ${fullName}` : fullName;
+        // --- END NEW LOGIC ---
+        
+        const photoUrl = photoUrlKey && std[photoUrlKey] ? std[photoUrlKey].trim() : null;
+
+        const photoElement = photoUrl 
+            ? `<img class="photo" src="${photoUrl}" alt="Photo" onerror="this.onerror=null;this.src='https://placehold.co/108x108/e2e8f0/7d7d7d?text=Error';"/>`
+            : `<div class="photo" style="background-color: transparent; border: 1px solid #000;"></div>`;
+
+        div.innerHTML = `
+          <div>
+            <div class="school-name">${schoolName}</div>
+            <!-- UPDATED: Use displayName instead of fullName -->
+            <div class="student-name">${displayName}</div>
+            <div class="info-and-qr">
+              <div class="info">
+                <div><b>អត្តលេខ:</b> ${studentId}</div>
+                <div><b>ថ្នាក់:</b> ${studentClass}</div>
+                <div><b>ឆ្នាំសិក្សា:</b> ${academicYear}</div>
+                <div><b>ភេទ:</b> ${gender}</div>
+                <div><b>ថ្ងៃកំណើត:</b> ${dob}</div> <!-- Display formatted DOB -->
+              </div>
+              <div id="${qrId}" class="qr"></div>
+            </div>
+          </div>
+          <div class="barcode-container" style="padding: 0 5px; margin-top: 5px;">
+             <svg id="${barcodeId}" style="width: 100%; height: auto;"></svg>
+          </div>
+          
+          <!-- RE-ADDED: Added Issue Date Display -->
+          <div class="issue-date" style="font-size: 10px; margin-top: 3px; font-weight: 500;">
+            ${formattedDate ? `ថ្ងៃចេញប័ណ្ណ: ${formattedDate}` : ''}
+          </div>
+
+          <div class="photo-wrapper">
+            ${photoElement}
+            ${sealUrl ? `<img class="stamp" src="${sealUrl}" alt="Stamp" />` : ''}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      // Generate QR codes and barcodes after DOM is ready
+      setTimeout(() => {
+        data.forEach(std => {
+           // Check std again before accessing properties
+           if (!std || typeof std !== 'object' || !std.id) return;
+
+          const qrId = `qr-${std.id}`;
+          const barcodeId = `barcode-${std.id}`;
+          const studentId = idKey ? std[idKey] : '';
+
+          if (studentId && window.QRCode) {
+            const qrElement = document.getElementById(qrId);
+            if (qrElement) {
+              qrElement.innerHTML = ''; // Clear previous QR code if any
+              try {
+                new QRCode(qrElement, {
+                  text: studentId,
+                  width: 70,
+                  height: 70,
+                  correctLevel: QRCode.CorrectLevel.H
+                });
+              } catch(e) {
+                  console.error("QRCode generation error for", studentId, e);
+              }
+            }
+          }
+          
+          if (studentId && window.JsBarcode) {
+            try {
+              const barcodeElement = document.getElementById(barcodeId);
+              if (barcodeElement) {
+                JsBarcode(`#${barcodeId}`, studentId, {
+                  format: "CODE128",
+                  height: 30,
+                  width: 1.8,
+                  displayValue: false,
+                  margin: 0
+                });
+              }
+            } catch (e) {
+              console.error("Barcode generation failed for ID:", studentId, e);
+              // Optionally hide the barcode container on error
+              const barcodeElement = document.getElementById(barcodeId);
+              if(barcodeElement) barcodeElement.closest('.barcode-container')?.remove();
+            }
+          }
+        });
+      }, 100);
+    }
+
+    // Debug logging for troubleshooting
+    console.log('stcard.html script loaded');
+    
+    // Auto-load when page loads
+    window.addEventListener('load', () => {
+      // --- RE-ADDED: Set default issue date to today ---
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('cardIssueDate');
+        if (dateInput) {
+            dateInput.value = today;
+        }
+      } catch (e) { console.error("Error setting default date:", e); }
+      // --- END RE-ADDED ---
+
+      console.log('Page loaded, checking auth...');
+      
+      // --- REMOVED THE TIMEOUT REDIRECT ---
+      // The handleAuthState function already handles redirection if needed based on session status.
+
+       // Initial call to filter/display if data might already be loaded (less likely now, but safe)
+       // The main call happens within loadDataFromSupabase after data is confirmed loaded.
+       if (allData.length > 0) {
+            filterAndDisplay();
+       }
+    });
+  </script>
+</body>
+</html>
+
