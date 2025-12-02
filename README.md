@@ -1,1 +1,1 @@
-hosting library system using supabase cloud database 
+hosting score management system using supabase
