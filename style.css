@@ -76,7 +76,11 @@ body { font-family: 'Khmer OS Siemreap', 'Noto Sans Khmer', system-ui, -apple-sy
   border-color: #fecaca; /* red-200 */
 }
 .btn-danger:hover { background: #fecaca; }
-.score-select { width: 60%; }
+.score-select { width: 100%; }
+
+@media (min-width: 768px) {
+  .score-select { width: 60%; }
+}
 
 /* Rainbow frame on hover/active/focus */
 .btn { position: relative; isolation: isolate; }
