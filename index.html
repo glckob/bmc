@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>បន្ទុកថ្នាក់ខ្ញុំ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;600;700&family=Noto+Serif+Khmer:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="./style.css" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  </head>
+  <body class="bg-gray-50 text-gray-900">
+    <section id="auth-shell" class="min-h-screen flex items-center justify-center p-6">
+      <div class="w-full max-w-md bg-white rounded-lg shadow p-6 space-y-4">
+        <h1 class="text-xl font-bold text-center">Sign in</h1>
+        <form id="form-auth" class="space-y-3">
+          <input id="auth-email" type="email" class="w-full border rounded px-3 py-2" placeholder="Email" autocomplete="email" />
+          <input id="auth-password" type="password" class="w-full border rounded px-3 py-2" placeholder="Password" autocomplete="current-password" />
+          <button id="btn-sign-in" class="w-full bg-blue-600 text-white px-3 py-2 rounded" type="submit">Sign in</button>
+        </form>
+        <button id="btn-sign-up" class="w-full bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded">Create account</button>
+      </div>
+    </section>
+    <div id="app-shell" class="w-full min-h-screen hidden">
+      <div class="fixed left-0 top-0 h-screen w-56 bg-blue-900 text-white p-4">
+        <aside class="h-full flex flex-col gap-2">
+          <button data-tab="classes" class="tab-btn active w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7.5l9-4.5 9 4.5M3 7.5v9l9 4.5m0-13.5v9m9-9v9l-9 4.5"/></svg>
+            <span>Classes</span>
+          </button>
+          <button data-tab="students" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19.128a9 9 0 10-6 0M12 12a3 3 0 100-6 3 3 0 000 6z"/></svg>
+            <span>Students</span>
+          </button>
+          <button data-tab="subjects" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v12m6-6H6"/></svg>
+            <span>Subjects</span>
+          </button>
+          <button data-tab="exams" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7h8M8 11h8M8 15h5M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <span>Exams</span>
+          </button>
+          <button data-tab="scores" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3v18h18M9 17V9m4 8v-5m4 5V7"/></svg>
+            <span>Scores</span>
+          </button>
+          <button data-tab="reports" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-6h6v6M8 21h8a2 2 0 002-2V9l-5-5H8a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span>Reports</span>
+          </button>
+          <button data-tab="avggr1" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h18M3 8h18M3 13h18M3 18h18"/></svg>
+            <span>AVG GR1</span>
+          </button>
+          <button data-tab="avggr2" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h18M3 8h18M3 13h18M3 18h18"/></svg>
+            <span>AVG GR2</span>
+          </button>
+          <button data-tab="specialgr1" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3l3 6 6 .5-4.5 4 1.5 6-6-3-6 3 1.5-6L3 9.5 9 9z"/></svg>
+            <span>SPECIAL GR1</span>
+          </button>
+          <button data-tab="specialgr2" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 3l3 6 6 .5-4.5 4 1.5 6-6-3-6 3 1.5-6L3 9.5 9 9z"/></svg>
+            <span>SPECIAL GR2</span>
+          </button>
+          <button data-tab="final" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14M5 12l4-4m-4 4l4 4"/></svg>
+            <span>FINAL</span>
+          </button>
+          <button data-tab="settings" class="tab-btn w-full text-left px-3 py-2 rounded bg-gray-800 hover:bg-gray-700 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.065 2.572c.94 1.543-.827 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.065c-1.543.94-3.31-.827-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.065-2.572c-.94-1.543.827-3.31 2.37-2.37.996.608 2.28.07 2.573-1.066z"/></svg>
+            <span>Settings</span>
+          </button>
+          <div class="mt-auto pt-4 border-t border-gray-700 text-xs">
+            <div class="opacity-80">Signed in as</div>
+            <div id="user-email" class="truncate opacity-90">-</div>
+            <button id="btn-sign-out" class="mt-3 w-full bg-red-600 text-white px-3 py-2 rounded">ចាកចេញ!</button>
+          </div>
+        </aside>
+      </div>
+      <div class="pl-56 col-span-11">
+        <div class="p-6 grid grid-cols-1 gap-6">
+          <h1 class="text-2xl font-bold mb-4 col-span-2 kh-heading">
+            បន្ទុកថ្នាក់ខ្ញុំ
+            <span class="text-gray-700 font-normal text-base ml-2">[<span id="header-school"></span>]</span>
+            <span class="text-gray-700 font-normal text-base ml-2">[<span id="header-tab"></span>]</span>
+          </h1>
+
+
+          <section id="tab-classes" class="tab">
+            <div class="grid gap-6">
+              <form id="form-class" class="space-y-2 w-full">
+                <h2 class="font-semibold">Add Class</h2>
+                <input id="class-display" type="number" min="1" class="w-full border rounded px-2 py-1" placeholder="ID (e.g., 1 for 01)" />
+                <input id="class-name" class="w-full border rounded px-2 py-1" placeholder="Class name (e.g., Grade 10 A)" />
+                <input id="class-year" type="number" class="w-full border rounded px-2 py-1" placeholder="Academic year (e.g., 2025)" />
+                <button class="bg-blue-600 text-white px-3 py-1 rounded" type="submit">Save</button>
+              </form>
+              <div class="flex-1">
+                <div class="flex items-center justify-between mb-2">
+                  <h2 class="font-semibold">Classes</h2>
+                  <div class="flex items-center gap-2">
+                    <button id="btn-import-classes" class="btn" type="button">Import</button>
+                    <button id="btn-export-classes" class="btn" type="button">Export</button>
+                    <button id="btn-print-classes" class="btn" type="button">Print</button>
+                    <button id="btn-delete-all-classes" class="btn btn-danger" type="button">Delete All</button>
+                    <input id="file-import-classes" type="file" accept=".xlsx,.xls" class="hidden" />
+                  </div>
+                </div>
+                <table class="w-full text-sm border" id="table-classes">
+                  <thead class="bg-gray-100"><tr><th class="p-2 text-left">ID</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Year</th><th class="p-2">Actions</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section id="tab-students" class="tab hidden">
+            <div class="grid gap-6">
+              <form id="form-student" class="space-y-2 w-full">
+                <h2 class="font-semibold">Add Student</h2>
+                <input id="student-display" type="number" min="1" class="w-full border rounded px-2 py-1" placeholder="ID (per class, e.g., 1 for 01)" />
+                <input id="student-first" class="w-full border rounded px-2 py-1" placeholder="First name" />
+                <input id="student-last" class="w-full border rounded px-2 py-1" placeholder="Last name" />
+                <input id="student-code" class="w-full border rounded px-2 py-1" placeholder="Student code (optional)" />
+                <select id="student-gender" class="w-full border rounded px-2 py-1">
+                  <option value="">Select gender (optional)</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+                <input id="student-photo" class="w-full border rounded px-2 py-1" placeholder="Photo URL (optional)" />
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <input id="student-dob" class="w-full border rounded px-2 py-1" placeholder="DOB (DD/MM/YYYY)" inputmode="numeric" autocomplete="bday" />
+                  <input id="student-age" class="w-full border rounded px-2 py-1 bg-gray-100" placeholder="Age (auto)" readonly />
+                </div>
+                <select id="student-class" class="w-full border rounded px-2 py-1"></select>
+                <button class="bg-blue-600 text-white px-3 py-1 rounded" type="submit">Save</button>
+              </form>
+              <div class="flex-1">
+                <div class="flex items-center justify-between mb-2">
+                  <h2 class="font-semibold">Students</h2>
+                  <div class="flex items-center gap-2">
+                    <button id="btn-import-students" class="btn" type="button">Import</button>
+                    <button id="btn-export-students" class="btn" type="button">Export</button>
+                    <button id="btn-print-students" class="btn" type="button">Print</button>
+                    <button id="btn-delete-all-students" class="btn btn-danger" type="button">Delete All</button>
+                    <input id="file-import-students" type="file" accept=".xlsx,.xls" class="hidden" />
+                  </div>
+                </div>
+                <table class="w-full text-sm border" id="table-students">
+                  <thead class="bg-gray-100">
+                    <tr>
+                      <th class="p-2 text-left">ID</th>
+                      <th class="p-2 text-left">Code</th>
+                      <th class="p-2 text-left">Name</th>
+                      <th class="p-2 text-left">Photo</th>
+                      <th class="p-2 text-left">Gender</th>
+                      <th class="p-2 text-left">DOB</th>
+                      <th class="p-2 text-left">Age</th>
+                      <th class="p-2 text-left">Class</th>
+                      <th class="p-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section id="tab-subjects" class="tab hidden">
+            <div class="grid gap-6">
+              <form id="form-subject" class="space-y-2 w-full">
+                <h2 class="font-semibold">Add Subject</h2>
+                <input id="subject-display" type="number" min="1" class="w-full border rounded px-2 py-1" placeholder="ID (e.g., 1 for 01)" />
+                <input id="subject-name" class="w-full border rounded px-2 py-1" placeholder="Subject name" />
+                <input id="subject-max" type="number" min="0.01" step="0.01" class="w-full border rounded px-2 py-1" placeholder="Max score (e.g., 100, 150.5)" />
+                <div class="text-sm text-gray-600">
+                  Value of subject: <span id="subject-value" class="font-semibold">0</span>
+                </div>
+                <button class="bg-blue-600 text-white px-3 py-1 rounded" type="submit">Save</button>
+              </form>
+              <div class="flex-1">
+                <div class="flex items-center justify-between mb-2">
+                  <h2 class="font-semibold">Subjects</h2>
+                  <div class="flex items-center gap-2">
+                    <button id="btn-import-subjects" class="btn" type="button">Import</button>
+                    <button id="btn-export-subjects" class="btn" type="button">Export</button>
+                    <button id="btn-print-subjects" class="btn" type="button">Print</button>
+                    <button id="btn-delete-all-subjects" class="btn btn-danger" type="button">Delete All</button>
+                    <input id="file-import-subjects" type="file" accept=".xlsx,.xls" class="hidden" />
+                  </div>
+                </div>
+                <table class="w-full text-sm border" id="table-subjects">
+                  <thead class="bg-gray-100">
+                    <tr>
+                      <th class="p-2 text-left">ID</th>
+                      <th class="p-2 text-left">Name</th>
+                      <th class="p-2 text-left">Max</th>
+                      <th class="p-2 text-left">Value</th>
+                      <th class="p-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section id="tab-exams" class="tab hidden">
+            <div class="grid gap-6">
+              <form id="form-exam" class="space-y-2 w-full">
+                <h2 class="font-semibold">Add Exam</h2>
+                <input id="exam-display" type="number" min="1" class="w-full border rounded px-2 py-1" placeholder="ID (per class, e.g., 1 for 01)" />
+                <input id="exam-name" class="w-full border rounded px-2 py-1" placeholder="Exam name (e.g., Midterm, Final)" />
+                <input id="exam-month" type="month" class="w-full border rounded px-2 py-1" />
+                <select id="exam-group" class="w-full border rounded px-2 py-1">
+                  <option value="">Select group (optional)</option>
+                  <option value="Group 1">Group 1</option>
+                  <option value="Group 2">Group 2</option>
+                  <option value="NONE">NONE</option>
+                  <option value="SM1">SM1</option>
+                  <option value="SM2">SM2</option>
+                  <option value="FINAL">FINAL</option>
+                </select>
+                <select id="exam-class" class="w-full border rounded px-2 py-1"></select>
+                <button class="bg-blue-600 text-white px-3 py-1 rounded" type="submit">Save</button>
+              </form>
+              <div class="flex-1">
+                <div class="flex items-center justify-between mb-2">
+                  <h2 class="font-semibold">Exams</h2>
+                  <div class="flex items-center gap-2">
+                    <button id="btn-import-exams" class="btn" type="button">Import</button>
+                    <button id="btn-export-exams" class="btn" type="button">Export</button>
+                    <button id="btn-print-exams" class="btn" type="button">Print</button>
+                    <button id="btn-delete-all-exams" class="btn btn-danger" type="button">Delete All</button>
+                    <input id="file-import-exams" type="file" accept=".xlsx,.xls" class="hidden" />
+                  </div>
+                </div>
+                <table class="w-full text-sm border" id="table-exams">
+                  <thead class="bg-gray-100"><tr><th class="p-2 text-left">ID</th><th class="p-2 text-left">Name</th><th class="p-2 text-left">Group</th><th class="p-2 text-left">Month</th><th class="p-2 text-left">Class</th><th class="p-2">Actions</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section id="tab-scores" class="tab hidden">
+            <div class="space-y-4">
+              <div class="grid md:grid-cols-3 gap-2 items-center">
+                <select id="score-class" class="border rounded px-2 py-1 score-select"></select>
+                <select id="score-exam" class="border rounded px-2 py-1 score-select"></select>
+                <div class="flex gap-2 justify-end">
+                  <button id="btn-import-scores" class="btn" type="button">Import</button>
+                  <button id="btn-export-scores" class="btn" type="button">Export</button>
+                  <button id="btn-print-scores" class="btn" type="button">Print</button>
+                  <button id="btn-delete-all-scores" class="btn btn-danger" type="button">Delete All</button>
+                  <input id="file-import-scores" type="file" accept=".xlsx,.xls" class="hidden" />
+                  <button id="btn-clear-scores" class="btn" type="button">Clear</button>
+                  <button id="btn-save-all-scores" class="btn btn-primary" disabled>Save All</button>
+                </div>
+              </div>
+              <div class="overflow-auto">
+                <table class="w-full text-sm border" id="table-scores">
+                  <thead class="bg-gray-100">
+                    <tr id="scores-header-row"></tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section id="tab-reports" class="tab hidden">
+            <div class="grid md:grid-cols-3 gap-2 mb-4">
+              <select id="report-class" class="border rounded px-2 py-2 w-full"></select>
+              <select id="report-exam" class="border rounded px-2 py-2 w-full"></select>
+              <div class="text-sm text-gray-500 flex items-center">Read-only</div>
+            </div>
+            <div class="overflow-auto mb-6">
+              <table class="w-full text-sm border" id="table-report">
+                <thead class="bg-gray-100"><tr><th class="p-2 text-left">Student</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="tab-avggr1" class="tab hidden">
+            <div class="grid md:grid-cols-3 gap-2 mb-4 items-center">
+              <select id="avggr1-class" class="border rounded px-2 py-2 w-full"></select>
+              <div></div>
+              <div class="flex justify-end">
+                <button id="btn-run-avggr1" class="bg-blue-600 text-white px-3 py-1 rounded">Run</button>
+              </div>
+            </div>
+            <div class="overflow-auto">
+              <table class="w-full text-sm border" id="table-avggr1">
+                <thead class="bg-gray-100"><tr><th class="p-2 text-left">Student</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="tab-avggr2" class="tab hidden">
+            <div class="grid md:grid-cols-3 gap-2 mb-4 items-center">
+              <select id="avggr2-class" class="border rounded px-2 py-2 w-full"></select>
+              <div></div>
+              <div class="flex justify-end">
+                <button id="btn-run-avggr2" class="bg-blue-600 text-white px-3 py-1 rounded">Run</button>
+              </div>
+            </div>
+            <div class="overflow-auto">
+              <table class="w-full text-sm border" id="table-avggr2">
+                <thead class="bg-gray-100"><tr><th class="p-2 text-left">Student</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="tab-specialgr1" class="tab hidden">
+            <div class="grid md:grid-cols-3 gap-2 mb-4 items-center">
+              <select id="specialgr1-class" class="border rounded px-2 py-2 w-full"></select>
+              <div></div>
+              <div class="flex justify-end">
+                <button id="btn-run-specialgr1" class="bg-blue-600 text-white px-3 py-1 rounded">Run</button>
+              </div>
+            </div>
+            <div class="overflow-auto">
+              <table class="w-full text-sm border" id="table-specialgr1">
+                <thead class="bg-gray-100"><tr><th class="p-2 text-left">Student</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="tab-specialgr2" class="tab hidden">
+            <div class="grid md:grid-cols-3 gap-2 mb-4 items-center">
+              <select id="specialgr2-class" class="border rounded px-2 py-2 w-full"></select>
+              <div></div>
+              <div class="flex justify-end">
+                <button id="btn-run-specialgr2" class="bg-blue-600 text-white px-3 py-1 rounded">Run</button>
+              </div>
+            </div>
+            <div class="overflow-auto">
+              <table class="w-full text-sm border" id="table-specialgr2">
+                <thead class="bg-gray-100"><tr><th class="p-2 text-left">Student</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="tab-final" class="tab hidden">
+            <div class="grid md:grid-cols-3 gap-2 mb-4 items-center">
+              <select id="final-class" class="border rounded px-2 py-2 w-full"></select>
+              <div></div>
+              <div class="flex justify-end">
+                <button id="btn-run-final" class="bg-blue-600 text-white px-3 py-1 rounded">Run</button>
+              </div>
+            </div>
+            <div class="overflow-auto">
+              <table class="w-full text-sm border" id="table-final">
+                <thead class="bg-gray-100"><tr><th class="p-2 text-left">Student</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="tab-settings" class="tab hidden">
+            <form id="form-settings" class="space-y-4 w-full">
+              <h2 class="font-semibold">Settings</h2>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium">School name</label>
+                  <input id="settings-school" class="w-full border rounded px-2 py-1" placeholder="School name" autocomplete="organization" />
+                  <div class="text-sm text-gray-600">Preview: <span id="preview-school" class="font-semibold"></span></div>
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium">Teacher name</label>
+                  <input id="settings-teacher" class="w-full border rounded px-2 py-1" placeholder="Teacher name" autocomplete="name" />
+                  <div class="text-sm text-gray-600">Preview: <span id="preview-teacher-name" class="font-semibold"></span></div>
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium">Logo URL</label>
+                  <input id="settings-logo" type="url" class="w-full border rounded px-2 py-1" placeholder="https://..." autocomplete="url" />
+                  <img id="preview-logo" alt="Logo preview" class="w-24 h-24 object-contain border rounded" onerror="this.src='';this.style.display='none'" />
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium">Teacher Photo URL</label>
+                  <input id="settings-teacher-photo" type="url" class="w-full border rounded px-2 py-1" placeholder="https://..." autocomplete="url" />
+                  <img id="preview-teacher" alt="Teacher photo preview" class="w-24 h-24 object-cover border rounded" onerror="this.src='';this.style.display='none'" />
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium">Class QR URL</label>
+                  <input id="settings-qr" type="url" class="w-full border rounded px-2 py-1" placeholder="https://..." autocomplete="url" />
+                  <img id="preview-qr" alt="Class QR preview" class="w-24 h-24 object-contain border rounded" onerror="this.src='';this.style.display='none'" />
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium">Teacher Sign URL</label>
+                  <input id="settings-sign" type="url" class="w-full border rounded px-2 py-1" placeholder="https://..." autocomplete="url" />
+                  <img id="preview-sign" alt="Teacher sign preview" class="w-24 h-24 object-contain border rounded" onerror="this.src='';this.style.display='none'" />
+                </div>
+              </div>
+              <div>
+                <button class="bg-blue-600 text-white px-3 py-1 rounded" type="submit">Save</button>
+              </div>
+
+            </form>
+          </section>
+
+        </div>
+      </div>
+    </div>
+
+    <script src="./app.js" type="module"></script>
+    <script>
+      // Tabs UX (guard against missing targets)
+      const btns = document.querySelectorAll('.tab-btn');
+      const tabs = document.querySelectorAll('.tab');
+      btns.forEach((b)=>{
+        b.addEventListener('click',()=>{
+          const target = document.getElementById('tab-'+b.dataset.tab);
+          if (!target) return; // safe-guard
+          btns.forEach(x=>{ x.classList.remove('active'); });
+          b.classList.add('active');
+          tabs.forEach(t=>t.classList.add('hidden'));
+          target.classList.remove('hidden');
+        })
+      })
+    </script>
+  </body>
+</html>
