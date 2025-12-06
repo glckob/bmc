@@ -46,14 +46,14 @@ async function notify(msg, ok=true){
       try {
         const { data, error } = await supabase.auth.refreshSession();
         if (!error && data?.session){
-          el.textContent = 'Session refreshed. Please retry your action.';
+          el.textContent = 'បានធ្វើឱ្យសម័យឡើងវិញ។ សូមព្យាយាមម្តងទៀត។';
           el.style.backgroundColor = '#16a34a';
           return;
         }
       } catch {}
       try { await supabase.auth.signOut(); } catch {}
       try { showAuth(); } catch {}
-      el.textContent = 'Session expired. Please sign in again.';
+      el.textContent = 'សម័យបានផុតកំណត់។ សូមចូលគណនីម្តងទៀត។';
       el.style.backgroundColor = '#dc2626';
     }
     try { alert(msg); } catch {}
@@ -90,7 +90,7 @@ async function runFinal(){
   const haveAny = idsG1.length || idsSM1.length || idsG2.length || idsSM2.length;
   if (!haveAny){
     thead.innerHTML = '<tr><th class="p-2 text-left">Student</th></tr>';
-    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">No exams for Group1/SM1/Group2/SM2</td>'; tbody.appendChild(tr); return;
+    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">គ្មានការប្រឡងសម្រាប់ក្រុមទី១/ឆមាសទី១/ក្រុមទី២/ឆមាសទី២ទេ</td>'; tbody.appendChild(tr); return;
   }
   // subjects and students
   const [{ data: subjects, error: eSub }, { data: students, error: eStu }] = await Promise.all([
@@ -262,7 +262,7 @@ async function runFinal(){
     }
     const rank = avgFinal != null ? rankByAvg.get(avgFinal) : null;
     const tdRank = `<td class=\"p-2 border font-semibold\">${rank ?? ''}</td>`;
-    const tdGrade = `<td class=\"p-2 border font-semibold\">${avgFinal!=null ? grade : 'គ្មានចំណាត់'}</td>`;
+    const tdGrade = `<td class=\"p-2 border font-semibold\">${avgFinal!=null ? grade : 'គ្មានចំណាត់ថ្នាក់'}</td>`;
     tr.innerHTML = tdName + tdSubjects + tdTotal + tdAvg + tdRank + tdGrade;
     if (avgFinal == null){ tr.classList.add('text-green-600'); tr.classList.remove('text-red-600'); }
     else if (grade === 'F'){ tr.classList.add('text-red-600'); tr.classList.remove('text-green-600'); }
@@ -294,7 +294,7 @@ async function runSpecialGr2_old(){
   const haveAny = idsG2.length || idsSM2.length;
   if (!haveAny){
     thead.innerHTML = '<tr><th class="p-2 text-left">Student</th></tr>';
-    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">No Group 2 or SM2 exams</td>'; tbody.appendChild(tr); return;
+    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">គ្មានការប្រឡងក្រុមទី២ ឬឆមាសទី២ទេ</td>'; tbody.appendChild(tr); return;
   }
   const [{ data: subjects, error: eSub }, { data: students, error: eStu }] = await Promise.all([
     supabase.from('subjects').select('id, name, max_score, display_no').order('display_no', { ascending: true }).order('id', { ascending: true }),
@@ -387,7 +387,7 @@ async function runSpecialGr2_old(){
     }
     const rank = avgFinal != null ? rankByAvg.get(avgFinal) : null;
     const tdRank = `<td class=\"p-2 border font-semibold\">${rank ?? ''}</td>`;
-    const tdGrade = `<td class=\"p-2 border font-semibold\">${avgFinal!=null ? grade : 'គ្មានចំណាត់'}</td>`;
+    const tdGrade = `<td class=\"p-2 border font-semibold\">${avgFinal!=null ? grade : 'គ្មានចំណាត់ថ្នាក់'}</td>`;
     tr.innerHTML = tdName + tdSubjects + tdTotal + tdAvg + tdRank + tdGrade;
     if (avgFinal == null){ tr.classList.add('text-green-600'); tr.classList.remove('text-red-600'); }
     else if (grade === 'F'){ tr.classList.add('text-red-600'); tr.classList.remove('text-green-600'); }
@@ -415,7 +415,7 @@ async function runAvgGr1(){
   const examIds = (exams || []).map(e=>e.id);
   if (!examIds.length){
     thead.innerHTML = '<tr><th class="p-2 text-left">Student</th></tr>';
-    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">No Group 1 exams</td>'; tbody.appendChild(tr); return;
+    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">គ្មានការប្រឡងក្រុមទី១ទេ</td>'; tbody.appendChild(tr); return;
   }
   // subjects
   const { data: subjects, error: eSub } = await supabase
@@ -524,7 +524,7 @@ async function runAvgGr2(){
   const examIds = (exams || []).map(e=>e.id);
   if (!examIds.length){
     thead.innerHTML = '<tr><th class="p-2 text-left">Student</th></tr>';
-    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">No Group 2 exams</td>'; tbody.appendChild(tr); return;
+    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">គ្មានការប្រឡងក្រុមទី២ទេ</td>'; tbody.appendChild(tr); return;
   }
   // subjects
   const { data: subjects, error: eSub } = await supabase
@@ -638,7 +638,7 @@ async function runSpecialGr1(){
   const haveAny = idsG1.length || idsSM1.length;
   if (!haveAny){
     thead.innerHTML = '<tr><th class="p-2 text-left">Student</th></tr>';
-    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">No Group 1 or SM1 exams</td>'; tbody.appendChild(tr); return;
+    const tr = document.createElement('tr'); tr.innerHTML = '<td class="p-2 border">គ្មានការប្រឡងក្រុមទី១ ឬឆមាសទី១ទេ</td>'; tbody.appendChild(tr); return;
   }
   // subjects and students
   const [{ data: subjects, error: eSub }, { data: students, error: eStu }] = await Promise.all([
@@ -758,7 +758,7 @@ async function runSpecialGr1(){
     }
     const rank = avgFinal != null ? rankByAvg.get(avgFinal) : null;
     const tdRank = `<td class=\"p-2 border font-semibold\">${rank ?? ''}</td>`;
-    const tdGrade = `<td class=\"p-2 border font-semibold\">${avgFinal!=null ? grade : 'គ្មានចំណាត់'}</td>`;
+    const tdGrade = `<td class=\"p-2 border font-semibold\">${avgFinal!=null ? grade : 'គ្មានចំណាត់ថ្នាក់'}</td>`;
     tr.innerHTML = tdName + tdSubjects + tdTotal + tdAvg + tdRank + tdGrade;
     if (avgFinal == null){ tr.classList.add('text-green-600'); tr.classList.remove('text-red-600'); }
     else if (grade === 'F'){ tr.classList.add('text-red-600'); tr.classList.remove('text-green-600'); }
@@ -904,7 +904,7 @@ async function runSpecialGr2(){
     }
     const rank = avgFinal != null ? rankByAvg.get(avgFinal) : null;
     const tdRank = `<td class=\"p-2 border font-semibold\">${rank ?? ''}</td>`;
-    const tdGrade = `<td class=\"p-2 border font-semibold\">${avgFinal!=null ? grade : 'គ្មានចំណាត់'}</td>`;
+    const tdGrade = `<td class=\"p-2 border font-semibold\">${avgFinal!=null ? grade : 'គ្មានចំណាត់ថ្នាក់'}</td>`;
     tr.innerHTML = tdName + tdSubjects + tdTotal + tdAvg + tdRank + tdGrade;
     if (avgFinal == null){ tr.classList.add('text-green-600'); tr.classList.remove('text-red-600'); }
     else if (grade === 'F'){ tr.classList.add('text-red-600'); tr.classList.remove('text-green-600'); }
